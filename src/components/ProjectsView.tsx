@@ -4,9 +4,11 @@ import { Project, ProjectTask, KanbanStatus } from '../types';
 import { cn } from '../utils';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Highlight from '@tiptap/extension-highlight';
-import Placeholder from '@tiptap/extension-placeholder';
+import {
+  createRichNoteExtensions,
+  RICH_NOTE_EDITOR_CONTENT_CLASS,
+  RichNoteFormattingMenuBar,
+} from './richNoteEditor';
 import {
   DndContext,
   DragOverlay,
@@ -145,7 +147,8 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
 
   if (expandedProject) {
     return (
-      <ProjectDetail 
+      <ProjectDetail
+        key={expandedProject.id}
         project={expandedProject}
         onBack={() => setExpandedProjectId(null)}
         onUpdate={handleUpdateProject}
@@ -490,21 +493,17 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   }, []);
 
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Highlight,
-      Placeholder.configure({
-        placeholder: 'Zapisz luźne notatki, linki, pomysły...',
-      }),
-    ],
+    extensions: createRichNoteExtensions('Zapisz luźne notatki, linki, pomysły...'),
     content: project.notes || '',
     editorProps: {
       attributes: {
-        class: 'tiptap prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] text-slate-700 dark:text-slate-300',
+        class: RICH_NOTE_EDITOR_CONTENT_CLASS,
       },
     },
     onUpdate: ({ editor }) => {
-      onUpdate({ ...project, notes: editor.getHTML() });
+      let html = editor.getHTML();
+      if (editor.isEmpty) html = '';
+      onUpdate({ ...project, notes: html });
     },
   });
 
@@ -825,9 +824,9 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       )}
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 h-full">
+        <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-8 h-full">
           {/* Kanban */}
-          <div className="lg:col-span-4 space-y-4 flex flex-col h-full">
+          <div className="flex-1 min-w-0 space-y-4 flex flex-col h-full">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Zadania w projekcie (Kanban)</label>
             </div>
@@ -890,13 +889,16 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
           </div>
 
           {/* Notatki */}
-          <div className="lg:col-span-1 space-y-4 flex flex-col h-full">
+          <div className="w-full lg:w-[400px] lg:flex-shrink-0 space-y-4 flex flex-col h-full min-h-[280px] lg:min-h-0">
             <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Notatki</label>
-            <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col">
-              <EditorContent 
-                editor={editor} 
-                className="flex-1 overflow-y-auto p-4 custom-scrollbar text-sm"
-              />
+            <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col p-4 min-h-[240px]">
+              <RichNoteFormattingMenuBar editor={editor} />
+              <div
+                className="flex-1 overflow-y-auto custom-scrollbar cursor-text min-h-0"
+                onClick={() => editor?.commands.focus()}
+              >
+                <EditorContent editor={editor} className="h-full text-sm" />
+              </div>
             </div>
           </div>
         </div>
