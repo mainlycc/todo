@@ -1,0 +1,5 @@
+{
+  "name": "Calendar To-Do",
+  "description": "Aplikacja To-Do z kalendarzem, priorytetami, kategoriami i podzadaniami.",
+  "requestFramePermissions": []
+}
