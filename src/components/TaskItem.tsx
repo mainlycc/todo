@@ -8,6 +8,7 @@ import { cn, colorStyles, TASK_COLORS, getTaskStyle, isPredefinedColor, Predefin
 interface TaskItemProps {
   key?: string | number;
   task: Task;
+  projectColor?: string | null;
   onToggleComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteSeries?: (templateId: string) => void;
@@ -30,6 +31,7 @@ const priorityLabels = {
 
 export function TaskItem({
   task,
+  projectColor,
   onToggleComplete,
   onDelete,
   onDeleteSeries,
@@ -164,6 +166,7 @@ export function TaskItem({
   const isCustomStyle = typeof styleData === 'object' && 'style' in styleData;
   const bgClass = isCustomStyle ? "" : styleData as string;
   const inlineStyle = isCustomStyle ? styleData.style : {};
+  const projectTagColor = projectColor || undefined;
 
   return (
     <div 
@@ -224,7 +227,29 @@ export function TaskItem({
             style={!task.completed && !isPredefinedColor(task.color || 'slate') ? { borderColor: task.color, backgroundColor: `${task.color}20`, color: task.color } : {}}>
               {priorityLabels[task.priority]}
             </span>
-            {task.category && (
+            {task.project_title && (
+              <span
+                className={cn(
+                  "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap",
+                  task.completed
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700"
+                    : "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
+                )}
+                style={
+                  !task.completed && projectTagColor
+                    ? {
+                        borderColor: `${projectTagColor}80`,
+                        backgroundColor: `${projectTagColor}24`,
+                        color: projectTagColor,
+                        boxShadow: `0 0 0 1px ${projectTagColor}1f`,
+                      }
+                    : undefined
+                }
+              >
+                {task.project_title}
+              </span>
+            )}
+            {!task.project_title && task.category && (
               <span className={cn(
                 "text-xs px-2 py-0.5 rounded-full border font-medium",
                 task.completed ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"

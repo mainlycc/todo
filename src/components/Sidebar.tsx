@@ -24,6 +24,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'tasks', label: 'Zadania', icon: CheckSquare },
     { id: 'calendar', label: 'Kalendarz', icon: CalendarDays },
     { id: 'expected_payments', label: 'Przewidywana wpłata', icon: Wallet },
+    { id: 'payments_history', label: 'Historia wpłat', icon: Landmark },
     { id: 'projects', label: 'Projekty', icon: Briefcase },
     { id: 'goals', label: 'Cele', icon: Target },
     { id: 'rules', label: 'Zasady', icon: ShieldCheck },

@@ -1,7 +1,7 @@
-import { format, isBefore, startOfDay } from 'date-fns';
+import { addMonths, format, isBefore, startOfDay, startOfMonth, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import React, { useEffect, useState, useRef } from 'react';
-import { Moon, Sun, List, ChevronRight, ChevronDown, X, GripVertical, Play, Clock, Archive } from 'lucide-react';
+import { Moon, Sun, List, ChevronRight, ChevronDown, X, GripVertical, Play, Clock, Archive, ChevronLeft } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -37,8 +37,9 @@ import { DailyTimeline as DailyTimelineComponent } from './components/DailyTimel
 import { TaskTimer } from './components/TaskTimer';
 import { supabase } from './lib/supabase';
 import { ANONYMOUS_USER_ID } from './constants';
-import { Priority, Task, Payment, ViewMode, TaskColor, RecurringTask, DailyNote, Project, ProjectTask, DailyTimeline, DailyTimelineEvent } from './types';
+import { Priority, Task, Payment, PaymentMonthOverride, ViewMode, TaskColor, RecurringTask, DailyNote, Project, ProjectTask, DailyTimeline, DailyTimelineEvent } from './types';
 import { cn } from './utils';
+import { PaymentsHistoryView } from './components/PaymentsHistoryView';
 const QUEUE_DATE = '2099-12-31';
 
 function DroppableContainer({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) {
@@ -210,7 +211,7 @@ const MinimalTaskItem: React.FC<{
             task.completed ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-200"
           )}
         />
-        {task.project_title && (
+        {task.project_title ? (
           <span 
             className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5"
             style={{ 
@@ -221,7 +222,14 @@ const MinimalTaskItem: React.FC<{
           >
             {task.project_title}
           </span>
-        )}
+        ) : task.category ? (
+          <span
+            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
+            title="Projekt"
+          >
+            {task.category}
+          </span>
+        ) : null}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             type="button"
@@ -313,6 +321,18 @@ export default function App() {
   const [view, setView] = useState<ViewMode>('tasks');
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [collapseAllTasksSignal, setCollapseAllTasksSignal] = useState(0);
+  const [paymentsMonth, setPaymentsMonth] = useState<Date>(() => startOfMonth(new Date()));
+  const [completionDates, setCompletionDates] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {};
+    const raw = localStorage.getItem('taskCompletionDates');
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
   const [queueSortMode, setQueueSortMode] = useState<'priority' | 'manual'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('queueSortMode');
@@ -338,12 +358,17 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [paymentMonthOverrides, setPaymentMonthOverrides] = useState<PaymentMonthOverride[]>([]);
   const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
   const [dailyTimelines, setDailyTimelines] = useState<Record<string, DailyTimeline>>({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeTimerTask, setActiveTimerTask] = useState<Task | null>(null);
   const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
   const allowPersistTaskOrder = useRef(false);
+
+  useEffect(() => {
+    localStorage.setItem('taskCompletionDates', JSON.stringify(completionDates));
+  }, [completionDates]);
 
   useEffect(() => {
     const url = (import.meta as any).env.VITE_SUPABASE_URL;
@@ -470,6 +495,15 @@ export default function App() {
         if (paymentsData) {
           console.log('Payments fetched:', paymentsData.length);
           setPayments(paymentsData);
+        }
+
+        // Fetch Payment Month Overrides
+        const { data: overridesData, error: oError } = await supabase
+          .from('payment_month_overrides')
+          .select('*');
+        if (oError) console.error('Error fetching payment month overrides:', oError);
+        if (overridesData) {
+          setPaymentMonthOverrides(overridesData as PaymentMonthOverride[]);
         }
 
         // Fetch Daily Notes
@@ -741,7 +775,10 @@ export default function App() {
   const allTasks = [...tasks, ...projectTasksAsTasks];
 
   const todayTasks = sortTasks(allTasks.filter(t => t.date === selectedDateStr), selectedDateStr);
-  const queueTasksBase = allTasks.filter(t => t.date === QUEUE_DATE);
+  const queueTasksBase = allTasks
+    .filter(t => t.date === QUEUE_DATE)
+    .filter(t => !t.is_recurring)
+    .filter(t => !t.completed || completionDates[t.id] === selectedDateStr);
   const queueTasks = queueSortMode === 'manual'
     ? sortTasks(queueTasksBase, QUEUE_DATE)
     : sortTasksByPriority(queueTasksBase);
@@ -762,6 +799,7 @@ export default function App() {
     const isOverToday = overId === 'today' || allTasks.find(t => t.id === overId)?.date === selectedDateStr;
 
     if (isOverQueue && activeTask.date !== QUEUE_DATE) {
+      if (activeTask.is_recurring) return;
       if (activeId.toString().startsWith('proj_task_')) {
         updateProjectTask(activeId.toString(), pt => ({ ...pt, date: QUEUE_DATE }));
       } else {
@@ -787,7 +825,7 @@ export default function App() {
     const isOverToday = over.id === 'today' || allTasks.find(t => t.id === over.id)?.date === selectedDateStr;
 
     let finalDate = activeTask.date;
-    if (isOverQueue) finalDate = QUEUE_DATE;
+    if (isOverQueue && !activeTask.is_recurring) finalDate = QUEUE_DATE;
     else if (isOverToday) finalDate = selectedDateStr;
 
     const isQueue = finalDate === QUEUE_DATE;
@@ -820,7 +858,45 @@ export default function App() {
     }
   };
 
-  const categories = Array.from(new Set(allTasks.map(t => t.category).filter(Boolean))) as string[];
+  const createProjectFromTaskForm = async (title: string): Promise<Project | null> => {
+    const trimmed = title.trim();
+    if (!trimmed) return null;
+
+    const existing = projects.find(p => p.title.toLowerCase() === trimmed.toLowerCase());
+    if (existing) return existing;
+
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+      return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    };
+
+    const COLORS = [
+      '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981', '#06b6d4',
+      '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
+    ];
+
+    const newProject: Project = {
+      id: generateId(),
+      user_id: ANONYMOUS_USER_ID,
+      title: trimmed,
+      description: '',
+      tasks: [],
+      notes: '',
+      completed: false,
+      created_at: new Date().toISOString(),
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      type: 'own',
+      deadline: null,
+    };
+
+    setProjects(prev => [newProject, ...prev]);
+
+    const { error } = await supabase.from('projects').insert([newProject]);
+    if (error) {
+      console.error('Error adding project to Supabase:', error);
+    }
+    return newProject;
+  };
 
   const handleAddTask = async (title: string, priority: Priority, category: string, color: TaskColor, isRecurring: boolean, dueDate?: string) => {
     if (isRecurring) {
@@ -867,6 +943,43 @@ export default function App() {
         if (!taskError && taskData) {
           const tasksWithSubtasks = taskData.map(t => ({ ...t, subtasks: [] }));
           setTasks(prev => [...tasksWithSubtasks, ...prev]);
+
+          // Jeśli szablon cykliczny ma przypisany projekt (pole "Projekt"), dodaj wpis również do projektu
+          const created = tasksWithSubtasks[0] as Task | undefined;
+          const projectName = (rt.category || '').trim();
+          if (created && projectName) {
+            const linkedProject = projects.find(p => p.title.toLowerCase() === projectName.toLowerCase());
+            if (linkedProject) {
+              const projTaskId = `proj_task_${created.id}`;
+              setProjects(prev => {
+                const next = prev.map(p => {
+                  if (p.id !== linkedProject.id) return p;
+                  const exists = (p.tasks || []).some(pt => pt.id === projTaskId);
+                  if (exists) return p;
+                  const newPt: ProjectTask = {
+                    id: projTaskId,
+                    title: created.title,
+                    status: 'poczekalnia',
+                    completed: false,
+                    created_at: new Date().toISOString(),
+                    priority: created.priority,
+                    color: created.color,
+                    notes: created.notes || '',
+                    subtasks: created.subtasks || [],
+                    date: created.date,
+                    pomodoros_completed: created.pomodoros_completed || 0,
+                  };
+                  const newTasks = [...(p.tasks || []), newPt];
+                  const updatedProject = { ...p, tasks: newTasks };
+                  supabase.from('projects').update({ tasks: newTasks }).eq('id', p.id).then(({ error }) => {
+                    if (error) console.error('Error adding linked recurring task to project:', error);
+                  });
+                  return updatedProject;
+                });
+                return next;
+              });
+            }
+          }
         }
       }
     } else {
@@ -895,12 +1008,56 @@ export default function App() {
       if (data) {
         const tasksWithSubtasks = data.map(t => ({ ...t, subtasks: [] }));
         setTasks(prev => [...tasksWithSubtasks, ...prev]);
+
+        // Jeśli użytkownik wybrał projekt (w polu "Projekt"), dodaj też wpis do tego projektu (kanban)
+        const created = tasksWithSubtasks[0] as Task | undefined;
+        if (created && category.trim()) {
+          const linkedProject = projects.find(p => p.title.toLowerCase() === category.trim().toLowerCase());
+          if (linkedProject) {
+            const projTaskId = `proj_task_${created.id}`;
+            setProjects(prev => {
+              const next = prev.map(p => {
+                if (p.id !== linkedProject.id) return p;
+                const exists = (p.tasks || []).some(pt => pt.id === projTaskId);
+                if (exists) return p;
+                const newPt: ProjectTask = {
+                  id: projTaskId,
+                  title: created.title,
+                  status: 'poczekalnia',
+                  completed: false,
+                  created_at: new Date().toISOString(),
+                  priority: created.priority,
+                  color: created.color,
+                  notes: created.notes || '',
+                  subtasks: created.subtasks || [],
+                  date: created.date,
+                  pomodoros_completed: created.pomodoros_completed || 0,
+                };
+                const newTasks = [...(p.tasks || []), newPt];
+                const updatedProject = { ...p, tasks: newTasks };
+                supabase.from('projects').update({ tasks: newTasks }).eq('id', p.id).then(({ error }) => {
+                  if (error) console.error('Error adding linked task to project:', error);
+                });
+                return updatedProject;
+              });
+              return next;
+            });
+          }
+        }
       }
     }
   };
 
   const handleToggleComplete = async (id: string) => {
     if (id.toString().startsWith('proj_task_')) {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const targetTask = allTasks.find(t => t.id === id);
+      const willBeCompleted = !(targetTask?.completed ?? false);
+      setCompletionDates(prev => {
+        if (willBeCompleted) return { ...prev, [id]: todayStr };
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
       updateProjectTask(id, pt => ({ ...pt, completed: !pt.completed, status: !pt.completed ? 'done' : 'in_progress' }));
       return;
     }
@@ -914,6 +1071,13 @@ export default function App() {
       .eq('id', id);
 
     if (!error) {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const willBeCompleted = !task.completed;
+      setCompletionDates(prev => {
+        if (willBeCompleted) return { ...prev, [id]: todayStr };
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
       setTasks(prev => prev.map(t => 
         t.id === id ? { ...t, completed: !t.completed } : t
       ));
@@ -923,6 +1087,10 @@ export default function App() {
   const handleDelete = async (id: string) => {
     if (id.toString().startsWith('proj_task_')) {
       updateProjectTask(id, pt => null);
+      setCompletionDates(prev => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
       if (focusedTaskId === id) {
         setFocusedTaskId(null);
         setView('tasks');
@@ -937,6 +1105,10 @@ export default function App() {
 
     if (!error) {
       setTasks(prev => prev.filter(t => t.id !== id));
+      setCompletionDates(prev => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
       if (focusedTaskId === id) {
         setFocusedTaskId(null);
         setView('tasks');
@@ -1125,22 +1297,31 @@ export default function App() {
     }
   };
 
-  const handleSaveDailyTimeline = async (timeline: DailyTimeline) => {
-    const date = format(selectedDate, 'yyyy-MM-dd');
+  const handleSaveDailyTimelineForDate = async (date: string, timeline: DailyTimeline) => {
     try {
-      const { error } = await supabase
+      // Jeśli timeline ma placeholderowe ID (np. "new-YYYY-MM-DD"), nie wysyłaj go do bazy,
+      // bo kolumna `id` jest UUID i Supabase zwróci błąd walidacji.
+      const shouldOmitId = typeof timeline.id === 'string' && timeline.id.startsWith('new-');
+      const payload: any = {
+        ...(shouldOmitId ? {} : { id: timeline.id }),
+        wake_up_time: timeline.wake_up_time,
+        sleep_time: timeline.sleep_time,
+        events: timeline.events || [],
+        user_id: ANONYMOUS_USER_ID,
+        date,
+      };
+
+      const { data, error } = await supabase
         .from('daily_timelines')
-        .upsert({
-          ...timeline,
-          user_id: ANONYMOUS_USER_ID,
-          date
-        }, { onConflict: 'user_id,date' });
+        .upsert(payload, { onConflict: 'user_id,date' })
+        .select()
+        .maybeSingle();
 
       if (error) throw error;
 
       setDailyTimelines(prev => ({
         ...prev,
-        [date]: timeline
+        [date]: (data as DailyTimeline) || { ...timeline, user_id: ANONYMOUS_USER_ID, date }
       }));
     } catch (err: any) {
       console.error('Error saving daily timeline:', err);
@@ -1155,6 +1336,11 @@ export default function App() {
         [date]: timeline
       }));
     }
+  };
+
+  const handleSaveDailyTimeline = async (timeline: DailyTimeline) => {
+    const date = format(selectedDate, 'yyyy-MM-dd');
+    return handleSaveDailyTimelineForDate(date, timeline);
   };
 
   const handleMoveToQueue = async () => {
@@ -1200,7 +1386,7 @@ export default function App() {
   };
 
   // Payments logic
-  const handleAddPayment = async (title: string, date: string, net_amount: number, gross_amount: number) => {
+  const handleAddPayment = async (title: string, date: string, net_amount: number, gross_amount: number, projectId: string | null) => {
     const { data, error } = await supabase
       .from('payments')
       .insert([{
@@ -1209,7 +1395,8 @@ export default function App() {
         date,
         net_amount,
         gross_amount,
-        is_realized: false
+        is_realized: false,
+        project_id: projectId
       }])
       .select();
 
@@ -1221,6 +1408,7 @@ export default function App() {
 
     if (data) {
       setPayments(prev => [...data, ...prev].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+      setPaymentsMonth(startOfMonth(new Date(date)));
     }
   };
 
@@ -1249,7 +1437,38 @@ export default function App() {
     }
   };
 
-  const currentMonthStr = format(new Date(), 'yyyy-MM');
+  const handleUpsertPaymentMonthOverride = async (month: string, net_total_override: number, gross_total_override: number) => {
+    const payload = {
+      user_id: ANONYMOUS_USER_ID,
+      month,
+      net_total_override,
+      gross_total_override,
+    };
+
+    const { data, error } = await supabase
+      .from('payment_month_overrides')
+      .upsert(payload as any, { onConflict: 'user_id,month' })
+      .select('*')
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error upserting payment month override:', error);
+      alert('Nie udało się zapisać nadpisania dla miesiąca.');
+      return;
+    }
+
+    if (data) {
+      setPaymentMonthOverrides(prev => {
+        const next = [...prev];
+        const idx = next.findIndex(o => o.user_id === data.user_id && o.month === data.month);
+        if (idx === -1) return [data as PaymentMonthOverride, ...next];
+        next[idx] = data as PaymentMonthOverride;
+        return next;
+      });
+    }
+  };
+
+  const currentMonthStr = format(paymentsMonth, 'yyyy-MM');
   const thisMonthPayments = payments.filter(p => p.date.startsWith(currentMonthStr));
   
   // Total predicted is everything in this month, regardless of status
@@ -1260,7 +1479,7 @@ export default function App() {
   const sumNetRealized = realizedThisMonth.reduce((acc, p) => acc + p.net_amount, 0);
   const sumGrossRealized = realizedThisMonth.reduce((acc, p) => acc + p.gross_amount, 0);
 
-  const sortedPayments = [...payments].sort((a, b) => {
+  const sortedPayments = [...thisMonthPayments].sort((a, b) => {
     if (a.is_realized !== b.is_realized) return a.is_realized ? 1 : -1;
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
@@ -1345,7 +1564,7 @@ export default function App() {
         <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 transition-colors">
           <div className="px-8 h-16 flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {view === 'tasks' ? 'Zadania' : view === 'calendar' ? 'Kalendarz' : view === 'expected_payments' ? 'Przewidywana Wpłata' : view === 'rules' ? 'Zasady' : view === 'goals' ? 'Cele' : view === 'projects' ? 'Projekty' : 'Tryb Skupienia'}
+              {view === 'tasks' ? 'Zadania' : view === 'calendar' ? 'Kalendarz' : view === 'expected_payments' ? 'Przewidywana Wpłata' : view === 'payments_history' ? 'Historia wpłat' : view === 'rules' ? 'Zasady' : view === 'goals' ? 'Cele' : view === 'projects' ? 'Projekty' : 'Tryb Skupienia'}
             </h1>
             
             <div className="flex items-center gap-6">
@@ -1373,8 +1592,26 @@ export default function App() {
 
               {view === 'expected_payments' && (
                 <div className="flex items-center gap-4 text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-                  <div className="font-semibold text-indigo-900 dark:text-indigo-300 capitalize border-r border-indigo-200 dark:border-indigo-800 pr-4">
-                    {format(new Date(), 'MMMM', { locale: pl })}
+                  <div className="flex items-center gap-2 border-r border-indigo-200 dark:border-indigo-800 pr-4">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentsMonth(prev => subMonths(prev, 1))}
+                      className="p-1.5 rounded-lg text-indigo-700/80 dark:text-indigo-300/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                      title="Poprzedni miesiąc"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="font-semibold text-indigo-900 dark:text-indigo-300 capitalize">
+                      {format(paymentsMonth, 'MMMM yyyy', { locale: pl })}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentsMonth(prev => addMonths(prev, 1))}
+                      className="p-1.5 rounded-lg text-indigo-700/80 dark:text-indigo-300/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                      title="Następny miesiąc"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
                   <div className="flex gap-8">
                     <div className="flex flex-col text-xs">
@@ -1468,6 +1705,7 @@ export default function App() {
                                 <SortableTaskItem
                                   key={task.id}
                                   task={task}
+                                  projectColor={task.project_id ? (projects.find(p => p.id === task.project_id)?.color || null) : null}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -1564,6 +1802,7 @@ export default function App() {
                                 <SortableTaskItem
                                   key={task.id}
                                   task={task}
+                                  projectColor={task.project_id ? (projects.find(p => p.id === task.project_id)?.color || null) : null}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -1588,7 +1827,7 @@ export default function App() {
                   </DndContext>
                 </div>
                 <div className="mt-6">
-                  <TaskForm onAdd={handleAddTask} categories={categories} />
+                  <TaskForm onAdd={handleAddTask} projects={projects} onCreateProject={createProjectFromTaskForm} />
                 </div>
               </>
             )}
@@ -1615,14 +1854,14 @@ export default function App() {
             />
             <DailyTimelineComponent
               timeline={dailyTimelines[format(selectedDate, 'yyyy-MM-dd')] || {
-                id: `new-${format(selectedDate, 'yyyy-MM-dd')}`,
+                id: (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? crypto.randomUUID() : `new-${format(selectedDate, 'yyyy-MM-dd')}`,
                 user_id: ANONYMOUS_USER_ID,
                 date: format(selectedDate, 'yyyy-MM-dd'),
                 wake_up_time: '08:00',
                 sleep_time: '00:00',
                 events: [
                   {
-                    id: `sleep-${format(selectedDate, 'yyyy-MM-dd')}`,
+                    id: (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? crypto.randomUUID() : `sleep-${format(selectedDate, 'yyyy-MM-dd')}`,
                     type: 'sleep',
                     time: '00:00',
                     title: 'Sen',
@@ -1638,22 +1877,31 @@ export default function App() {
       )}
 
       {view === 'calendar' && (
-        <CalendarView tasks={allTasks} dailyNotes={dailyNotes} onSaveDailyNote={handleSaveDailyNote} />
+        <CalendarView
+          tasks={allTasks}
+          dailyNotes={dailyNotes}
+          onSaveDailyNote={handleSaveDailyNote}
+          dailyTimelines={dailyTimelines}
+          onSaveDailyTimeline={handleSaveDailyTimelineForDate}
+          projects={projects}
+        />
       )}
 
       {view === 'expected_payments' && (
         <>
-          <PaymentForm onAdd={handleAddPayment} />
+          <PaymentForm onAdd={handleAddPayment} projects={projects} />
           <div className="space-y-3 mt-6">
             {sortedPayments.length === 0 ? (
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-dashed">
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Brak przewidywanych wpłat.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Brak przewidywanych wpłat w tym miesiącu.</p>
               </div>
             ) : (
               sortedPayments.map(payment => (
                 <PaymentItem
                   key={payment.id}
                   payment={payment}
+                  projectTitle={payment.project_id ? (projects.find(p => p.id === payment.project_id)?.title || null) : null}
+                  projectColor={payment.project_id ? (projects.find(p => p.id === payment.project_id)?.color || null) : null}
                   onToggleRealized={handleTogglePaymentRealized}
                   onDelete={handleDeletePayment}
                 />
@@ -1661,6 +1909,14 @@ export default function App() {
             )}
           </div>
         </>
+      )}
+
+      {view === 'payments_history' && (
+        <PaymentsHistoryView
+          payments={payments}
+          overrides={paymentMonthOverrides}
+          onUpsertOverride={handleUpsertPaymentMonthOverride}
+        />
       )}
 
       {view === 'rules' && (

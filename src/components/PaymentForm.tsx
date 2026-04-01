@@ -1,15 +1,18 @@
 import { Plus, Calculator } from 'lucide-react';
 import { useState, FormEvent, ChangeEvent } from 'react';
+import { Project } from '../types';
 
 interface PaymentFormProps {
-  onAdd: (title: string, date: string, net_amount: number, gross_amount: number) => void;
+  onAdd: (title: string, date: string, net_amount: number, gross_amount: number, projectId: string | null) => void;
+  projects: Project[];
 }
 
-export function PaymentForm({ onAdd }: PaymentFormProps) {
+export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [netAmount, setNetAmount] = useState('');
   const [grossAmount, setGrossAmount] = useState('');
+  const [projectId, setProjectId] = useState<string>('');
 
   const handleNetChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -25,11 +28,12 @@ export function PaymentForm({ onAdd }: PaymentFormProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (title.trim() && date && netAmount && grossAmount) {
-      onAdd(title.trim(), date, parseFloat(netAmount), parseFloat(grossAmount));
+      onAdd(title.trim(), date, parseFloat(netAmount), parseFloat(grossAmount), projectId || null);
       setTitle('');
       setDate('');
       setNetAmount('');
       setGrossAmount('');
+      setProjectId('');
     }
   };
 
@@ -61,6 +65,25 @@ export function PaymentForm({ onAdd }: PaymentFormProps) {
               className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
               required
             />
+          </div>
+          <div className="w-full md:w-56">
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
+              Projekt
+            </label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+            >
+              <option value="">— brak —</option>
+              {projects
+                .filter(p => !p.completed)
+                .map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.emoji ? `${p.emoji} ` : ''}{p.title}
+                  </option>
+                ))}
+            </select>
           </div>
         </div>
         

@@ -45,6 +45,15 @@ export interface Payment {
   net_amount: number;
   gross_amount: number;
   is_realized: boolean;
+  project_id?: string | null;
+}
+
+export interface PaymentMonthOverride {
+  id: string;
+  user_id: string;
+  month: string; // YYYY-MM
+  net_total_override: number;
+  gross_total_override: number;
 }
 
 export interface DailyNote {
@@ -104,6 +113,7 @@ export interface DailyTimelineEvent {
   notes?: string;
   color?: string;
   duration?: number; // in minutes
+  project_id?: string | null;
 }
 
 export interface DailyTimeline {
@@ -115,4 +125,4 @@ export interface DailyTimeline {
   events: DailyTimelineEvent[];
 }
 
-export type ViewMode = 'tasks' | 'calendar' | 'expected_payments' | 'focus' | 'rules' | 'goals' | 'projects';
+export type ViewMode = 'tasks' | 'calendar' | 'expected_payments' | 'payments_history' | 'focus' | 'rules' | 'goals' | 'projects';

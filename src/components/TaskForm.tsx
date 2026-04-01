@@ -1,11 +1,12 @@
-import { Plus, Smile, Calendar, Palette } from 'lucide-react';
-import { useState, FormEvent, useRef, useEffect } from 'react';
-import { Priority, TaskColor } from '../types';
+import { Plus, Smile, Palette } from 'lucide-react';
+import { useState, FormEvent, useRef } from 'react';
+import { Priority, TaskColor, Project } from '../types';
 import { TASK_COLORS, getCategoryColor, colorStyles, cn, isPredefinedColor } from '../utils';
 
 interface TaskFormProps {
   onAdd: (title: string, priority: Priority, category: string, color: TaskColor, isRecurring: boolean, dueDate?: string) => void;
-  categories: string[];
+  projects: Project[];
+  onCreateProject: (title: string) => Promise<Project | null>;
 }
 
 const COMMON_EMOJIS = [
@@ -14,15 +15,18 @@ const COMMON_EMOJIS = [
   '📞', '📧', '🚗', '✈️', '⭐', '✅', '🛑', '⏳'
 ];
 
-export function TaskForm({ onAdd, categories }: TaskFormProps) {
+export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(''); // project title (string) for backward compatibility
   const [selectedColor, setSelectedColor] = useState<TaskColor | 'auto'>('auto');
   const [isRecurring, setIsRecurring] = useState(false);
   const [dueDate, setDueDate] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [projectMode, setProjectMode] = useState<'select' | 'create'>('select');
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const effectiveColor = selectedColor === 'auto' ? getCategoryColor(category) : selectedColor;
@@ -39,6 +43,8 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
       setDueDate('');
       setIsExpanded(false);
       setShowEmojiPicker(false);
+      setProjectMode('select');
+      setNewProjectTitle('');
     }
   };
 
@@ -71,7 +77,7 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-visible mb-6 relative z-10 transition-colors">
       <form onSubmit={handleSubmit} className="p-4">
-        <div className="flex items-center gap-3 relative">
+        <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-700 flex-shrink-0" />
           <input
             ref={inputRef}
@@ -80,10 +86,10 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
             onChange={(e) => setTitle(e.target.value)}
             onFocus={() => setIsExpanded(true)}
             placeholder="Co masz do zrobienia?"
-            className="flex-grow text-base bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium pr-10 text-slate-900 dark:text-white"
+            className="flex-1 min-w-0 text-base bg-transparent border-none focus:outline-none focus:ring-0 placeholder:text-slate-400 dark:placeholder:text-slate-500 font-medium text-slate-900 dark:text-white"
           />
           
-          <div className="absolute right-12 flex items-center">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -92,6 +98,14 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
             >
               <Smile className="w-5 h-5" />
             </button>
+            {title.trim() && (
+              <button
+                type="submit"
+                className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors flex-shrink-0"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {showEmojiPicker && (
@@ -100,7 +114,7 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
                 className="fixed inset-0 z-20" 
                 onClick={() => setShowEmojiPicker(false)}
               />
-              <div className="absolute right-12 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-3 z-30 w-64 grid grid-cols-6 gap-2">
+              <div className="absolute right-4 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-3 z-30 w-64 grid grid-cols-6 gap-2">
                 {COMMON_EMOJIS.map(emoji => (
                   <button
                     key={emoji}
@@ -114,20 +128,11 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
               </div>
             </>
           )}
-
-          {title.trim() && (
-            <button
-              type="submit"
-              className="bg-indigo-600 text-white p-2 rounded-xl hover:bg-indigo-700 transition-colors flex-shrink-0 z-10"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          )}
         </div>
 
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-4 transition-all">
-            <div className="flex-1 min-w-[140px]">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all">
+            <div className="min-w-0">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
                 Termin
               </label>
@@ -150,7 +155,7 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
               </div>
             </div>
 
-            <div className="flex-1 min-w-[140px]">
+            <div className="min-w-0">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
                 Priorytet
               </label>
@@ -165,26 +170,75 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
               </select>
             </div>
             
-            <div className="flex-1 min-w-[140px]">
+            <div className="min-w-0">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
-                Kategoria
+                Projekt
               </label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                list="categories"
-                placeholder="np. Praca, Dom..."
-                className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-              />
-              <datalist id="categories">
-                {categories.map(c => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
+              {projectMode === 'select' ? (
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__create__') {
+                      setProjectMode('create');
+                      setNewProjectTitle('');
+                      return;
+                    }
+                    setCategory(val);
+                  }}
+                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                >
+                  <option value="">— wybierz —</option>
+                  {projects
+                    .filter(p => !p.completed)
+                    .map(p => (
+                      <option key={p.id} value={p.title}>
+                        {p.emoji ? `${p.emoji} ` : ''}{p.title}
+                      </option>
+                    ))}
+                  <option value="__create__">+ Dodaj nowy projekt…</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newProjectTitle}
+                    onChange={(e) => setNewProjectTitle(e.target.value)}
+                    placeholder="Nazwa nowego projektu…"
+                    className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    disabled={!newProjectTitle.trim() || isCreatingProject}
+                    onClick={async () => {
+                      if (!newProjectTitle.trim()) return;
+                      setIsCreatingProject(true);
+                      try {
+                        const created = await onCreateProject(newProjectTitle.trim());
+                        if (created) {
+                          setCategory(created.title);
+                          setProjectMode('select');
+                        }
+                      } finally {
+                        setIsCreatingProject(false);
+                      }
+                    }}
+                    className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Dodaj
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProjectMode('select')}
+                    className="text-xs px-3 py-2 rounded-xl border border-transparent font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+                  >
+                    Anuluj
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="flex-1 min-w-[200px]">
+            <div className="min-w-0 lg:col-span-2">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
                 Kolor
               </label>
@@ -229,7 +283,7 @@ export function TaskForm({ onAdd, categories }: TaskFormProps) {
               </div>
             </div>
 
-            <div className="w-full mt-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="sm:col-span-2 lg:col-span-4 mt-2 pt-4 border-t border-slate-100 dark:border-slate-800">
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer w-fit hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                 <input
                   type="checkbox"

@@ -1,4 +1,4 @@
-import { CheckCircle2, Circle, Trash2, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2, Calendar, FolderKanban } from 'lucide-react';
 import { Payment } from '../types';
 import { cn } from '../utils';
 import { format } from 'date-fns';
@@ -7,11 +7,13 @@ import { pl } from 'date-fns/locale';
 interface PaymentItemProps {
   key?: string | number;
   payment: Payment;
+  projectTitle?: string | null;
+  projectColor?: string | null;
   onToggleRealized: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-export function PaymentItem({ payment, onToggleRealized, onDelete }: PaymentItemProps) {
+export function PaymentItem({ payment, projectTitle, projectColor, onToggleRealized, onDelete }: PaymentItemProps) {
   return (
     <div className={cn(
       "bg-white dark:bg-slate-900 rounded-2xl border p-4 flex items-center gap-4 transition-all",
@@ -37,9 +39,29 @@ export function PaymentItem({ payment, onToggleRealized, onDelete }: PaymentItem
         )}>
           {payment.title}
         </h3>
-        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>{format(new Date(payment.date), 'd MMMM yyyy', { locale: pl })}</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{format(new Date(payment.date), 'd MMMM yyyy', { locale: pl })}</span>
+          </span>
+          {projectTitle ? (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider text-[11px] shadow-sm"
+              style={
+                !payment.is_realized && projectColor
+                  ? {
+                      borderColor: `${projectColor}80`,
+                      backgroundColor: `${projectColor}24`,
+                      color: projectColor,
+                      boxShadow: `0 0 0 1px ${projectColor}1f`,
+                    }
+                  : undefined
+              }
+            >
+              <FolderKanban className="w-3.5 h-3.5" />
+              {projectTitle}
+            </span>
+          ) : null}
         </div>
       </div>
 

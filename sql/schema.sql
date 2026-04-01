@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS payments (
     net_amount NUMERIC NOT NULL,
     gross_amount NUMERIC NOT NULL,
     is_realized BOOLEAN DEFAULT FALSE,
+    project_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -64,12 +65,26 @@ CREATE TABLE IF NOT EXISTS daily_notes (
     UNIQUE(user_id, date)
 );
 
+-- 6. Tabela daily_timelines (harmonogram dnia + wydarzenia z godziną)
+CREATE TABLE IF NOT EXISTS daily_timelines (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL,
+    date TEXT NOT NULL,
+    wake_up_time TEXT,
+    sleep_time TEXT,
+    events JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, date)
+);
+
 -- Włączenie Row Level Security (RLS)
 ALTER TABLE recurring_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subtasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_timelines ENABLE ROW LEVEL SECURITY;
 
 -- Utworzenie polityk dostępu (Policies) - pozwalają na wszystkie operacje (odczyt, zapis, usuwanie)
 -- W środowisku produkcyjnym warto je ograniczyć tylko do zalogowanego użytkownika (auth.uid() = user_id)
@@ -78,3 +93,5 @@ CREATE POLICY "Allow all operations for tasks" ON tasks FOR ALL USING (true) WIT
 CREATE POLICY "Allow all operations for subtasks" ON subtasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for payments" ON payments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for daily_notes" ON daily_notes FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Allow all operations for daily_timelines" ON daily_timelines;
+CREATE POLICY "Allow all operations for daily_timelines" ON daily_timelines FOR ALL USING (true) WITH CHECK (true);
