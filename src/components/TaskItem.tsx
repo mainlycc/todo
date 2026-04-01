@@ -16,6 +16,8 @@ interface TaskItemProps {
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
   onFocus: (id: string) => void;
   onUpdateTask: (task: Task) => void;
+  /** Zmiana tej wartości powoduje zwinięcie szczegółów w zadaniu. */
+  collapseSignal?: number;
   dragHandleProps?: Record<string, any>;
   isDragging?: boolean;
 }
@@ -36,6 +38,7 @@ export function TaskItem({
   onDeleteSubtask,
   onFocus,
   onUpdateTask,
+  collapseSignal,
   dragHandleProps,
   isDragging,
 }: TaskItemProps) {
@@ -65,6 +68,12 @@ export function TaskItem({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showMenu]);
+
+  useEffect(() => {
+    if (collapseSignal === undefined) return;
+    setIsExpanded(false);
+    setShowMenu(false);
+  }, [collapseSignal]);
 
   const handleAddSubtask = (e: FormEvent) => {
     e.preventDefault();

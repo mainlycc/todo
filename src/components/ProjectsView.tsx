@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Briefcase, Plus, Trash2, CheckCircle2, Circle, Save, X, Edit2, ArrowRight, ArrowLeft, Link as LinkIcon, Smile, ArrowLeft as BackIcon } from 'lucide-react';
+import { Briefcase, Plus, Trash2, CheckCircle2, Circle, Save, X, Edit2, ArrowRight, ArrowLeft, Link as LinkIcon, Smile, ArrowLeft as BackIcon, Calendar } from 'lucide-react';
 import { Project, ProjectTask, KanbanStatus } from '../types';
 import { cn } from '../utils';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
@@ -86,6 +86,7 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
       created_at: new Date().toISOString(),
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: newProjectType,
+      deadline: null,
     };
 
     // Update local state first for immediate feedback
@@ -131,17 +132,20 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
     handleUpdateProject({ ...project, completed: !project.completed });
   };
 
-  const sortedProjects = [...projects].sort((a, b) => {
-    if (sortBy === 'type') {
-      const typeA = a.type || 'own';
-      const typeB = b.type || 'own';
-      return typeA.localeCompare(typeB);
-    }
-    if (sortBy === 'title') {
-      return a.title.localeCompare(b.title);
-    }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+  const sortWithinGroup = (list: Project[]) =>
+    [...list].sort((a, b) => {
+      if (sortBy === 'type') {
+        // przy podziale na kolumny typ jest już ustalony, więc w ramach kolumny sortuj po nazwie
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+  const clientProjects = sortWithinGroup(projects.filter(p => (p.type || 'own') === 'client'));
+  const ownProjects = sortWithinGroup(projects.filter(p => (p.type || 'own') !== 'client'));
 
   const expandedProject = projects.find(p => p.id === expandedProjectId);
 
@@ -244,15 +248,37 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
             <p className="text-sm">Dodaj swój pierwszy projekt, aby zacząć działać.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {sortedProjects.map(project => (
-              <ProjectCard 
-                key={project.id} 
-                project={project} 
-                onClick={() => setExpandedProjectId(project.id)}
-                onToggleComplete={() => toggleProjectCompletion(project)}
-              />
-            ))}
+          <div className="grid grid-cols-2 gap-x-32 items-start">
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
+                Klienci (CLI)
+              </div>
+              <div className="grid grid-cols-2 gap-y-1 gap-x-1 justify-items-start">
+                {clientProjects.map(project => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onClick={() => setExpandedProjectId(project.id)}
+                    onToggleComplete={() => toggleProjectCompletion(project)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
+                Prywatne (OWN)
+              </div>
+              <div className="grid grid-cols-2 gap-y-1 gap-x-1 justify-items-start">
+                {ownProjects.map(project => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onClick={() => setExpandedProjectId(project.id)}
+                    onToggleComplete={() => toggleProjectCompletion(project)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -269,7 +295,7 @@ function ProjectCard({ project, onClick, onToggleComplete }: { project: Project,
     <div 
       onClick={onClick}
       className={cn(
-        "rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40",
+        "rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40 w-full max-w-[260px]",
         project.completed && "opacity-75"
       )}
       style={{ 
@@ -325,6 +351,12 @@ function ProjectCard({ project, onClick, onToggleComplete }: { project: Project,
       </div>
 
       <div className="mt-auto">
+        {project.deadline && (
+          <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+            <Calendar className="w-3 h-3 opacity-70" />
+            <span>{project.deadline}</span>
+          </div>
+        )}
         <div className="flex justify-between items-center mb-1">
           <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400">({completedTasks}/{totalTasks})</span>
           <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300">{progress}%</span>
@@ -477,6 +509,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   const [editLink, setEditLink] = useState(project.link || '');
   const [editEmoji, setEditEmoji] = useState(project.emoji || '');
   const [editType, setEditType] = useState<'own' | 'client'>(project.type || 'own');
+  const [editDeadline, setEditDeadline] = useState<string>(project.deadline || '');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
@@ -515,7 +548,8 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       color: editColor,
       link: editLink,
       emoji: editEmoji,
-      type: editType
+      type: editType,
+      deadline: editDeadline.trim() ? editDeadline.trim() : null,
     });
     setIsEditing(false);
   };
@@ -527,6 +561,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     setEditLink(project.link || '');
     setEditEmoji(project.emoji || '');
     setEditType(project.type || 'own');
+    setEditDeadline(project.deadline || '');
     setIsEditing(true);
   };
 
@@ -758,6 +793,27 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                   className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Deadline</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="date"
+                  value={editDeadline}
+                  onChange={e => setEditDeadline(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                />
+              </div>
+              {editDeadline && (
+                <button
+                  type="button"
+                  onClick={() => setEditDeadline('')}
+                  className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-red-600 transition-colors"
+                >
+                  Usuń deadline
+                </button>
+              )}
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Kolor projektu</label>

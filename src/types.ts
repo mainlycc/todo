@@ -93,6 +93,7 @@ export interface Project {
   link?: string;
   emoji?: string;
   type?: 'own' | 'client';
+  deadline?: string | null; // YYYY-MM-DD
 }
 
 export interface DailyTimelineEvent {

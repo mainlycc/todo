@@ -115,9 +115,10 @@ const MinimalTaskItem: React.FC<{
   onToggleSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
   onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
   onFocus: (id: string) => void,
+  collapseSignal?: number,
   dragHandleProps?: any,
   isDragging?: boolean
-}> = ({ task, projects, onToggleComplete, onUpdateTask, onAddSubtask, onToggleSubtask, onDeleteSubtask, onFocus, dragHandleProps, isDragging }) => {
+}> = ({ task, projects, onToggleComplete, onUpdateTask, onAddSubtask, onToggleSubtask, onDeleteSubtask, onFocus, collapseSignal, dragHandleProps, isDragging }) => {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.notes || '');
   const [isExpanded, setIsExpanded] = useState(!!task.notes || (task.subtasks && task.subtasks.length > 0));
@@ -130,6 +131,25 @@ const MinimalTaskItem: React.FC<{
     setTitle(task.title);
     setDescription(task.notes || '');
   }, [task.title, task.notes]);
+
+  useEffect(() => {
+    if (collapseSignal === undefined) return;
+    setIsExpanded(false);
+  }, [collapseSignal]);
+
+  const handleSetPriority = (p: Priority) => {
+    if (p === task.priority) return;
+    onUpdateTask({ ...task, priority: p });
+  };
+
+  const priorityLevel: 1 | 2 | 3 =
+    task.priority === 'low' ? 1 : task.priority === 'medium' ? 2 : 3;
+  const litColorClass =
+    priorityLevel === 1
+      ? 'bg-emerald-500 dark:bg-emerald-400'
+      : priorityLevel === 2
+        ? 'bg-amber-500 dark:bg-amber-400'
+        : 'bg-rose-500 dark:bg-rose-400';
 
   const handleBlur = () => {
     if (title.trim() !== task.title && title.trim() !== '') {
@@ -202,6 +222,35 @@ const MinimalTaskItem: React.FC<{
             {task.project_title}
           </span>
         )}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => handleSetPriority('low')}
+            className={cn(
+              "w-2.5 h-2.5 rounded-full transition-colors",
+              priorityLevel >= 1 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+            )}
+            title="Priorytet: luz (1 kropka)"
+          />
+          <button
+            type="button"
+            onClick={() => handleSetPriority('medium')}
+            className={cn(
+              "w-2.5 h-2.5 rounded-full transition-colors",
+              priorityLevel >= 2 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+            )}
+            title="Priorytet: ważne (2 kropki)"
+          />
+          <button
+            type="button"
+            onClick={() => handleSetPriority('high')}
+            className={cn(
+              "w-2.5 h-2.5 rounded-full transition-colors",
+              priorityLevel >= 3 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+            )}
+            title="Priorytet: turbo pilne (3 kropki)"
+          />
+        </div>
         <button
           onClick={() => onFocus(task.id)}
           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
@@ -263,6 +312,14 @@ const MinimalTaskItem: React.FC<{
 export default function App() {
   const [view, setView] = useState<ViewMode>('tasks');
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
+  const [collapseAllTasksSignal, setCollapseAllTasksSignal] = useState(0);
+  const [queueSortMode, setQueueSortMode] = useState<'priority' | 'manual'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('queueSortMode');
+      if (saved === 'manual' || saved === 'priority') return saved;
+    }
+    return 'priority';
+  });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -645,6 +702,20 @@ export default function App() {
     });
   };
 
+  const sortTasksByPriority = (taskList: Task[]) => {
+    return [...taskList].sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      if (a.is_recurring !== b.is_recurring) return a.is_recurring ? -1 : 1;
+      const priorityWeight = { high: 3, medium: 2, low: 1 };
+      const diff = priorityWeight[b.priority] - priorityWeight[a.priority];
+      if (diff !== 0) return diff;
+      // stabilizacja: najpierw z terminem, potem alfabetycznie
+      if (!!a.due_date !== !!b.due_date) return a.due_date ? -1 : 1;
+      if (a.due_date && b.due_date && a.due_date !== b.due_date) return a.due_date < b.due_date ? -1 : 1;
+      return a.title.localeCompare(b.title);
+    });
+  };
+
   const projectTasksAsTasks: Task[] = projects.flatMap(p => 
     (p.tasks || [])
       .filter(pt => pt.status === 'do_zrobienia' || pt.status === 'in_progress')
@@ -670,7 +741,10 @@ export default function App() {
   const allTasks = [...tasks, ...projectTasksAsTasks];
 
   const todayTasks = sortTasks(allTasks.filter(t => t.date === selectedDateStr), selectedDateStr);
-  const queueTasks = sortTasks(allTasks.filter(t => t.date === QUEUE_DATE), QUEUE_DATE);
+  const queueTasksBase = allTasks.filter(t => t.date === QUEUE_DATE);
+  const queueTasks = queueSortMode === 'manual'
+    ? sortTasks(queueTasksBase, QUEUE_DATE)
+    : sortTasksByPriority(queueTasksBase);
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
@@ -725,7 +799,7 @@ export default function App() {
       ? listTasks.length - 1 
       : listTasks.findIndex(t => t.id === over.id);
 
-    if (oldIndex !== -1 && newIndex !== -1) {
+    if (oldIndex !== -1 && newIndex !== -1 && !(isQueue && queueSortMode === 'priority')) {
       const newFilteredTasks = arrayMove(listTasks, oldIndex, newIndex);
       const newOrder = newFilteredTasks.map(t => t.id);
       
@@ -1381,6 +1455,7 @@ export default function App() {
                                   onToggleSubtask={handleToggleSubtask}
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
+                                  collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
                               {todayTasks.length === 0 && (
@@ -1401,6 +1476,7 @@ export default function App() {
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
                                   onUpdateTask={handleUpdateTask}
+                                  collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
                               {todayTasks.length === 0 && (
@@ -1416,7 +1492,47 @@ export default function App() {
 
                     {/* Queue Section */}
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Kolejka</h2>
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Kolejka</h2>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                            <button
+                              type="button"
+                              onClick={() => { setQueueSortMode('priority'); localStorage.setItem('queueSortMode', 'priority'); }}
+                              className={cn(
+                                "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
+                                queueSortMode === 'priority'
+                                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                              )}
+                              title="Sortuj kolejkę według ważności"
+                            >
+                              Ważność
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setQueueSortMode('manual'); localStorage.setItem('queueSortMode', 'manual'); }}
+                              className={cn(
+                                "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
+                                queueSortMode === 'manual'
+                                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                              )}
+                              title="Sortuj kolejkę ręcznie (przeciąganie)"
+                            >
+                              Ręcznie
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCollapseAllTasksSignal(v => v + 1)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+                            title="Zwiń wszystkie rozwinięte zadania"
+                          >
+                            Zwiń wszystko
+                          </button>
+                        </div>
+                      </div>
                       <DroppableContainer id="queue" className="min-h-[100px]">
                         <SortableContext
                           items={queueTasks.map(t => t.id)}
@@ -1435,6 +1551,7 @@ export default function App() {
                                   onToggleSubtask={handleToggleSubtask}
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
+                                  collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
                               {queueTasks.length === 0 && (
@@ -1455,6 +1572,7 @@ export default function App() {
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
                                   onUpdateTask={handleUpdateTask}
+                                  collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
                               {queueTasks.length === 0 && (
