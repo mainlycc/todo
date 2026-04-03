@@ -29,7 +29,14 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const effectiveColor = selectedColor === 'auto' ? getCategoryColor(category) : selectedColor;
+  const matchedProject = category.trim()
+    ? projects.find(p => p.title.toLowerCase() === category.trim().toLowerCase())
+    : undefined;
+
+  const effectiveColor =
+    selectedColor === 'auto'
+      ? (matchedProject?.color || getCategoryColor(category))
+      : selectedColor;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

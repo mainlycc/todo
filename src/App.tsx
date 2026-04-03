@@ -1,6 +1,6 @@
 import { addMonths, format, isBefore, startOfDay, startOfMonth, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Moon, Sun, List, ChevronRight, ChevronDown, X, GripVertical, Play, Clock, Archive, ChevronLeft } from 'lucide-react';
 import {
   DndContext,
@@ -127,6 +127,13 @@ const MinimalTaskItem: React.FC<{
 
   const project = projects?.find(p => p.id === task.project_id);
   const projectColor = project?.color;
+  const matchedProject =
+    project ??
+    projects?.find(
+      pr =>
+        !!task.project_title &&
+        pr.title.toLowerCase() === task.project_title.trim().toLowerCase()
+    );
 
   useEffect(() => {
     setTitle(task.title);
@@ -213,13 +220,14 @@ const MinimalTaskItem: React.FC<{
         />
         {task.project_title ? (
           <span 
-            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5"
+            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5"
             style={{ 
               backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
               color: projectColor || 'inherit',
               borderColor: projectColor ? `${projectColor}30` : 'transparent'
             }}
           >
+            {matchedProject?.emoji ? matchedProject.emoji : null}
             {task.project_title}
           </span>
         ) : task.category ? (
@@ -750,6 +758,111 @@ export default function App() {
     });
   };
 
+  const getProjectForTask = (task: Task): Project | undefined => {
+    if (task.project_id) return projects.find(p => p.id === task.project_id);
+    const name = (task.project_title || task.category || '').trim();
+    if (!name) return undefined;
+    return projects.find(p => p.title.toLowerCase() === name.toLowerCase());
+  };
+
+  const normalizeTaskProjectMeta = (task: Task): Task => {
+    if (task.project_id || task.project_title) return task;
+    const p = getProjectForTask(task);
+    if (!p) return task;
+    return { ...task, project_id: p.id, project_title: p.title };
+  };
+
+  const ensureTaskInProjectKanban = async (task: Task) => {
+    const normalized = normalizeTaskProjectMeta(task);
+    const p = getProjectForTask(normalized);
+    if (!p) return;
+
+    const projTaskId = `proj_task_${normalized.id}`;
+    const desiredStatus: ProjectTask['status'] = normalized.completed ? 'done' : 'do_zrobienia';
+
+    // 1) Local state update (and then persist the project.tasks array)
+    let didChange = false;
+    setProjects(prev => {
+      const next = prev.map(project => {
+        if (project.id !== p.id) return project;
+
+        const tasksArr = project.tasks || [];
+        const idx = tasksArr.findIndex(pt => pt.id === projTaskId);
+        if (idx === -1) {
+          didChange = true;
+          const newPt: ProjectTask = {
+            id: projTaskId,
+            title: normalized.title,
+            status: desiredStatus,
+            completed: normalized.completed,
+            created_at: new Date().toISOString(),
+            priority: normalized.priority,
+            color: normalized.color || project.color,
+            notes: normalized.notes || '',
+            subtasks: normalized.subtasks || [],
+            date: normalized.date,
+            pomodoros_completed: normalized.pomodoros_completed || 0,
+          };
+          return { ...project, tasks: [...tasksArr, newPt] };
+        }
+
+        const existing = tasksArr[idx];
+        const nextStatus = normalized.completed
+          ? 'done'
+          : (existing.status === 'in_progress' ? 'in_progress' : 'do_zrobienia');
+
+        const updated: ProjectTask = {
+          ...existing,
+          title: normalized.title,
+          completed: normalized.completed,
+          status: nextStatus,
+          priority: normalized.priority,
+          color: normalized.color || existing.color,
+          notes: normalized.notes || existing.notes,
+          subtasks: normalized.subtasks || existing.subtasks,
+          date: normalized.date,
+          pomodoros_completed: normalized.pomodoros_completed || existing.pomodoros_completed,
+        };
+
+        // Cheap equality guard
+        const changed =
+          existing.title !== updated.title ||
+          existing.completed !== updated.completed ||
+          existing.status !== updated.status ||
+          existing.priority !== updated.priority ||
+          existing.color !== updated.color ||
+          (existing.notes || '') !== (updated.notes || '') ||
+          (existing.date || '') !== (updated.date || '') ||
+          (existing.pomodoros_completed || 0) !== (updated.pomodoros_completed || 0) ||
+          JSON.stringify(existing.subtasks || []) !== JSON.stringify(updated.subtasks || []);
+
+        if (!changed) return project;
+        didChange = true;
+        const newTasks = [...tasksArr];
+        newTasks[idx] = updated;
+        return { ...project, tasks: newTasks };
+      });
+      return next;
+    });
+
+    // 2) Persist if we actually changed something
+    if (didChange) {
+      const latest = projects.find(pr => pr.id === p.id);
+      const tasksToSave = latest?.tasks;
+      // If state hasn't propagated yet, schedule a microtask to save using current state in closure
+      queueMicrotask(() => {
+        setProjects(curr => {
+          const pr = curr.find(x => x.id === p.id);
+          if (!pr) return curr;
+          supabase.from('projects').update({ tasks: pr.tasks }).eq('id', p.id).then(({ error }) => {
+            if (error) console.error('Error syncing task to project kanban:', error);
+          });
+          return curr;
+        });
+      });
+    }
+  };
+
   const projectTasksAsTasks: Task[] = projects.flatMap(p => 
     (p.tasks || [])
       .filter(pt => pt.status === 'do_zrobienia' || pt.status === 'in_progress')
@@ -759,7 +872,7 @@ export default function App() {
         title: pt.title,
         date: pt.date || QUEUE_DATE,
         completed: pt.completed,
-        priority: pt.priority || 'medium',
+        priority: (pt.priority ?? p.priority ?? 'medium') as Priority,
         category: p.title,
         color: pt.color || p.color || 'blue',
         is_recurring: false,
@@ -772,7 +885,56 @@ export default function App() {
       } as Task))
   );
 
-  const allTasks = [...tasks, ...projectTasksAsTasks];
+  const baseTasks = tasks.map(normalizeTaskProjectMeta);
+  // Jeśli zadanie jest połączone z projektem, tworzymy w kanbanie klona `proj_task_<taskId>`.
+  // Nie chcemy go dublować w głównej liście zadań (Dzisiaj / Kolejka), więc filtrujemy te klony.
+  const linkedProjectCloneIds = new Set(baseTasks.map(t => `proj_task_${t.id}`));
+  const allTasks = [...baseTasks, ...projectTasksAsTasks.filter(t => !linkedProjectCloneIds.has(t.id))];
+
+  const workBlockDoneTasksForDay = useMemo(
+    () =>
+      allTasks
+        .filter(
+          t =>
+            t.completed &&
+            (t.date === selectedDateStr || completionDates[t.id] === selectedDateStr)
+        )
+        .map(t => ({ id: t.id, title: t.title })),
+    [allTasks, selectedDateStr, completionDates]
+  );
+
+  // Jeśli są ukończone zadania do pokazania, a harmonogram nie ma bloku „Praca”,
+  // automatycznie go tworzymy dla wybranego dnia (żeby lista zawsze była widoczna w tym jednym bloku).
+  useEffect(() => {
+    if (!selectedDateStr) return;
+    if (workBlockDoneTasksForDay.length === 0) return;
+    const current = dailyTimelines[selectedDateStr];
+    const events = current?.events || [];
+    const hasWorkBlock = events.some(e => e.type === 'other' && e.title.trim().toLowerCase() === 'praca');
+    if (hasWorkBlock) return;
+
+    const nextTimeline: DailyTimeline = {
+      id: current?.id || crypto.randomUUID(),
+      user_id: current?.user_id || ANONYMOUS_USER_ID,
+      date: selectedDateStr,
+      wake_up_time: current?.wake_up_time,
+      sleep_time: current?.sleep_time,
+      events: [
+        ...events,
+        {
+          id: crypto.randomUUID(),
+          type: 'other',
+          time: '09:00',
+          title: 'Praca',
+          duration: 90,
+          color: 'indigo',
+        },
+      ],
+    };
+
+    handleSaveDailyTimelineForDate(selectedDateStr, nextTimeline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDateStr, workBlockDoneTasksForDay.length, dailyTimelines]);
 
   const todayTasks = sortTasks(allTasks.filter(t => t.date === selectedDateStr), selectedDateStr);
   const queueTasksBase = allTasks
@@ -887,6 +1049,8 @@ export default function App() {
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: 'own',
       deadline: null,
+      priority: 'medium',
+      turn: 'mine',
     };
 
     setProjects(prev => [newProject, ...prev]);
@@ -941,15 +1105,20 @@ export default function App() {
           .select();
 
         if (!taskError && taskData) {
-          const tasksWithSubtasks = taskData.map(t => ({ ...t, subtasks: [] }));
+          const linkedProjectName = (rt.category || '').trim();
+          const linkedProject = linkedProjectName
+            ? projects.find(p => p.title.toLowerCase() === linkedProjectName.toLowerCase())
+            : undefined;
+
+          const tasksWithSubtasks = taskData.map(t => {
+            const base = { ...t, subtasks: [] } as Task;
+            return linkedProject ? { ...base, project_id: linkedProject.id, project_title: linkedProject.title } : base;
+          });
           setTasks(prev => [...tasksWithSubtasks, ...prev]);
 
           // Jeśli szablon cykliczny ma przypisany projekt (pole "Projekt"), dodaj wpis również do projektu
           const created = tasksWithSubtasks[0] as Task | undefined;
-          const projectName = (rt.category || '').trim();
-          if (created && projectName) {
-            const linkedProject = projects.find(p => p.title.toLowerCase() === projectName.toLowerCase());
-            if (linkedProject) {
+          if (created && linkedProject) {
               const projTaskId = `proj_task_${created.id}`;
               setProjects(prev => {
                 const next = prev.map(p => {
@@ -959,7 +1128,7 @@ export default function App() {
                   const newPt: ProjectTask = {
                     id: projTaskId,
                     title: created.title,
-                    status: 'poczekalnia',
+                    status: 'do_zrobienia',
                     completed: false,
                     created_at: new Date().toISOString(),
                     priority: created.priority,
@@ -978,7 +1147,6 @@ export default function App() {
                 });
                 return next;
               });
-            }
           }
         }
       }
@@ -1006,14 +1174,20 @@ export default function App() {
       }
 
       if (data) {
-        const tasksWithSubtasks = data.map(t => ({ ...t, subtasks: [] }));
+        const projectName = category.trim();
+        const linkedProject = projectName
+          ? projects.find(p => p.title.toLowerCase() === projectName.toLowerCase())
+          : undefined;
+
+        const tasksWithSubtasks = data.map(t => {
+          const base = { ...t, subtasks: [] } as Task;
+          return linkedProject ? { ...base, project_id: linkedProject.id, project_title: linkedProject.title } : base;
+        });
         setTasks(prev => [...tasksWithSubtasks, ...prev]);
 
         // Jeśli użytkownik wybrał projekt (w polu "Projekt"), dodaj też wpis do tego projektu (kanban)
         const created = tasksWithSubtasks[0] as Task | undefined;
-        if (created && category.trim()) {
-          const linkedProject = projects.find(p => p.title.toLowerCase() === category.trim().toLowerCase());
-          if (linkedProject) {
+        if (created && linkedProject) {
             const projTaskId = `proj_task_${created.id}`;
             setProjects(prev => {
               const next = prev.map(p => {
@@ -1023,7 +1197,7 @@ export default function App() {
                 const newPt: ProjectTask = {
                   id: projTaskId,
                   title: created.title,
-                  status: 'poczekalnia',
+                  status: 'do_zrobienia',
                   completed: false,
                   created_at: new Date().toISOString(),
                   priority: created.priority,
@@ -1042,7 +1216,6 @@ export default function App() {
               });
               return next;
             });
-          }
         }
       }
     }
@@ -1050,11 +1223,12 @@ export default function App() {
 
   const handleToggleComplete = async (id: string) => {
     if (id.toString().startsWith('proj_task_')) {
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
       const targetTask = allTasks.find(t => t.id === id);
       const willBeCompleted = !(targetTask?.completed ?? false);
       setCompletionDates(prev => {
-        if (willBeCompleted) return { ...prev, [id]: todayStr };
+        // Ukończenie przypisujemy do aktualnie oglądanego dnia (selectedDateStr),
+        // żeby zadanie nie znikało od razu z widoku tego dnia.
+        if (willBeCompleted) return { ...prev, [id]: selectedDateStr };
         const { [id]: _, ...rest } = prev;
         return rest;
       });
@@ -1071,16 +1245,20 @@ export default function App() {
       .eq('id', id);
 
     if (!error) {
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
       const willBeCompleted = !task.completed;
       setCompletionDates(prev => {
-        if (willBeCompleted) return { ...prev, [id]: todayStr };
+        // Ukończenie przypisujemy do aktualnie oglądanego dnia (selectedDateStr),
+        // żeby zadanie nie znikało od razu z widoku tego dnia.
+        if (willBeCompleted) return { ...prev, [id]: selectedDateStr };
         const { [id]: _, ...rest } = prev;
         return rest;
       });
       setTasks(prev => prev.map(t => 
         t.id === id ? { ...t, completed: !t.completed } : t
       ));
+
+      // Jeśli to zadanie jest przypisane do projektu (tag projektu), zsynchronizuj z kanbanem projektu.
+      ensureTaskInProjectKanban({ ...task, completed: !task.completed });
     }
   };
 
@@ -1271,6 +1449,10 @@ export default function App() {
         }
         return t;
       }));
+
+      // Jeśli po edycji zadanie jest przypisane do projektu, upewnij się, że istnieje w kanbanie projektu.
+      // (To naprawia przypadek: tag projektu w zadaniach, ale brak wpisu w `project.tasks`).
+      ensureTaskInProjectKanban({ ...updatedTask, subtasks: updatedTask.subtasks || [] });
     }
   };
 
@@ -1489,56 +1671,54 @@ export default function App() {
   const handleStopTimer = async (elapsedSeconds: number) => {
     if (!activeTimerTask) return;
 
-    // Only add to timeline if duration is more than 5 minutes (300 seconds)
+    // Tylko sesje > 5 min — zapis jako zwykły tekst w pierwszym bloku „Praca” (pole notes), bez osobnego kafelka.
     if (elapsedSeconds > 300) {
       const durationMinutes = Math.ceil(elapsedSeconds / 60);
       const now = new Date();
       const startTime = new Date(now.getTime() - elapsedSeconds * 1000);
-      const timeStr = format(startTime, 'HH:mm');
+      const startStr = format(startTime, 'HH:mm');
+      const endStr = format(now, 'HH:mm');
       const todayStr = format(now, 'yyyy-MM-dd');
+      const line = `${startStr}–${endStr} · ${durationMinutes}m · ${activeTimerTask.title}`;
 
-      const newEvent: DailyTimelineEvent = {
-        id: crypto.randomUUID(),
-        type: 'task',
-        time: timeStr,
-        title: activeTimerTask.title,
-        color: activeTimerTask.color || '#6366f1',
-        duration: durationMinutes
+      const existing = dailyTimelines[todayStr];
+      const events = [...(existing?.events || [])];
+      const workIdx = events.findIndex(
+        e => e.type === 'other' && e.title.trim().toLowerCase() === 'praca'
+      );
+
+      let nextEvents: DailyTimelineEvent[];
+      if (workIdx !== -1) {
+        const w = events[workIdx];
+        const prev = (w.notes || '').trim();
+        nextEvents = events.map((e, i) =>
+          i === workIdx ? { ...e, notes: prev ? `${prev}\n${line}` : line } : e
+        );
+      } else {
+        nextEvents = [
+          ...events,
+          {
+            id: crypto.randomUUID(),
+            type: 'other',
+            time: startStr,
+            title: 'Praca',
+            duration: Math.max(90, durationMinutes),
+            color: 'indigo',
+            notes: line,
+          },
+        ];
+      }
+
+      const nextTimeline: DailyTimeline = {
+        id: existing?.id || crypto.randomUUID(),
+        user_id: existing?.user_id || ANONYMOUS_USER_ID,
+        date: todayStr,
+        wake_up_time: existing?.wake_up_time,
+        sleep_time: existing?.sleep_time,
+        events: nextEvents,
       };
 
-      const todayTimeline = dailyTimelines[todayStr];
-
-      if (todayTimeline) {
-        const updatedEvents = [...todayTimeline.events, newEvent];
-        const { error } = await supabase
-          .from('daily_timelines')
-          .update({ events: updatedEvents })
-          .eq('id', todayTimeline.id);
-
-        if (!error) {
-          setDailyTimelines(prev => ({
-            ...prev,
-            [todayStr]: { ...todayTimeline, events: updatedEvents }
-          }));
-        }
-      } else {
-        const newTimeline: DailyTimeline = {
-          id: crypto.randomUUID(),
-          user_id: ANONYMOUS_USER_ID,
-          date: todayStr,
-          events: [newEvent]
-        };
-        const { error } = await supabase
-          .from('daily_timelines')
-          .insert([newTimeline]);
-
-        if (!error) {
-          setDailyTimelines(prev => ({
-            ...prev,
-            [todayStr]: newTimeline
-          }));
-        }
-      }
+      await handleSaveDailyTimelineForDate(todayStr, nextTimeline);
     }
 
     setActiveTimerTask(null);
@@ -1705,7 +1885,8 @@ export default function App() {
                                 <SortableTaskItem
                                   key={task.id}
                                   task={task}
-                                  projectColor={task.project_id ? (projects.find(p => p.id === task.project_id)?.color || null) : null}
+                                  projectColor={getProjectForTask(task)?.color || null}
+                                  projectEmoji={getProjectForTask(task)?.emoji || null}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -1802,7 +1983,8 @@ export default function App() {
                                 <SortableTaskItem
                                   key={task.id}
                                   task={task}
-                                  projectColor={task.project_id ? (projects.find(p => p.id === task.project_id)?.color || null) : null}
+                                  projectColor={getProjectForTask(task)?.color || null}
+                                  projectEmoji={getProjectForTask(task)?.emoji || null}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -1866,11 +2048,12 @@ export default function App() {
                     time: '00:00',
                     title: 'Sen',
                     duration: 480,
-                    color: 'indigo'
+                    color: '#1D4ED8'
                   }
                 ]
               }}
               onUpdate={handleSaveDailyTimeline}
+              workBlockDoneTasks={workBlockDoneTasksForDay}
             />
           </div>
         </div>
@@ -1928,7 +2111,7 @@ export default function App() {
       )}
 
       {view === 'projects' && (
-        <ProjectsView projects={projects} setProjects={setProjects} />
+        <ProjectsView projects={projects} setProjects={setProjects} payments={payments} />
       )}
     </div>
   </main>

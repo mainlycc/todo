@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Briefcase, Plus, Trash2, CheckCircle2, Circle, Save, X, Edit2, ArrowRight, ArrowLeft, Link as LinkIcon, Smile, ArrowLeft as BackIcon, Calendar } from 'lucide-react';
-import { Project, ProjectTask, KanbanStatus } from '../types';
+import { Briefcase, Plus, Trash2, CheckCircle2, Circle, Save, X, Edit2, ArrowRight, ArrowLeft, Link as LinkIcon, Smile, ArrowLeft as BackIcon, Calendar, DollarSign } from 'lucide-react';
+import { Payment, Project, ProjectTask, KanbanStatus, Priority, ProjectTurn } from '../types';
 import { cn } from '../utils';
+import { ProjectTurnGlyph } from './ProjectTurnVisual';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import {
@@ -36,6 +37,7 @@ import { ANONYMOUS_USER_ID } from '../constants';
 interface ProjectsViewProps {
   projects: Project[];
   setProjects: (projects: Project[]) => void;
+  payments: Payment[];
 }
 
 const COLORS = [
@@ -57,12 +59,21 @@ const COLORS = [
   '#f43f5e', // Rose 500
 ];
 
-export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
+export function ProjectsView({ projects, setProjects, payments }: ProjectsViewProps) {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectType, setNewProjectType] = useState<'own' | 'client'>('own');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'created_at' | 'type' | 'title'>('created_at');
+
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const pendingPaidProjectIds = new Set(
+    payments
+      .filter(p => !!p.project_id)
+      .filter(p => p.date?.startsWith(currentMonth))
+      .filter(p => !p.is_realized)
+      .map(p => p.project_id as string)
+  );
 
   const handleAddProject = async () => {
     if (!newProjectTitle.trim()) return;
@@ -87,6 +98,8 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: newProjectType,
       deadline: null,
+      priority: 'medium',
+      turn: 'mine',
     };
 
     // Update local state first for immediate feedback
@@ -253,13 +266,21 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
               <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
                 Klienci (CLI)
               </div>
-              <div className="grid grid-cols-2 gap-y-1 gap-x-1 justify-items-start">
+              <div className="grid grid-cols-2 gap-3 justify-items-start">
                 {clientProjects.map(project => (
                   <ProjectCard 
                     key={project.id} 
                     project={project} 
                     onClick={() => setExpandedProjectId(project.id)}
                     onToggleComplete={() => toggleProjectCompletion(project)}
+                    onSetPriority={(p) => handleUpdateProject({ ...project, priority: p })}
+                    onToggleTurn={() =>
+                      handleUpdateProject({
+                        ...project,
+                        turn: (project.turn || 'mine') === 'mine' ? 'theirs' : 'mine',
+                      })
+                    }
+                    showDollar={pendingPaidProjectIds.has(project.id)}
                   />
                 ))}
               </div>
@@ -268,13 +289,21 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
               <div className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-3">
                 Prywatne (OWN)
               </div>
-              <div className="grid grid-cols-2 gap-y-1 gap-x-1 justify-items-start">
+              <div className="grid grid-cols-2 gap-3 justify-items-start">
                 {ownProjects.map(project => (
                   <ProjectCard 
                     key={project.id} 
                     project={project} 
                     onClick={() => setExpandedProjectId(project.id)}
                     onToggleComplete={() => toggleProjectCompletion(project)}
+                    onSetPriority={(p) => handleUpdateProject({ ...project, priority: p })}
+                    onToggleTurn={() =>
+                      handleUpdateProject({
+                        ...project,
+                        turn: (project.turn || 'mine') === 'mine' ? 'theirs' : 'mine',
+                      })
+                    }
+                    showDollar={pendingPaidProjectIds.has(project.id)}
                   />
                 ))}
               </div>
@@ -286,24 +315,157 @@ export function ProjectsView({ projects, setProjects }: ProjectsViewProps) {
   );
 }
 
-function ProjectCard({ project, onClick, onToggleComplete }: { project: Project, onClick: () => void, onToggleComplete: () => void }) {
+function PriorityDots({
+  priority,
+  onChange,
+  sizeClass = 'w-3.5 h-3.5',
+  gapClass = 'gap-1',
+  className,
+}: {
+  priority: Priority;
+  onChange: (p: Priority) => void;
+  sizeClass?: string;
+  gapClass?: string;
+  className?: string;
+}) {
+  const level: 1 | 2 | 3 = priority === 'low' ? 1 : priority === 'medium' ? 2 : 3;
+  const litColorClass =
+    level === 1
+      ? 'bg-emerald-500 dark:bg-emerald-400'
+      : level === 2
+        ? 'bg-amber-500 dark:bg-amber-400'
+        : 'bg-rose-500 dark:bg-rose-400';
+
+  const baseDot =
+    'rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.18)]';
+
+  const offDot = 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
+
+  return (
+    <div className={cn('flex items-center', gapClass, className)} aria-label="Priorytet">
+      <button
+        type="button"
+        onClick={() => onChange('low')}
+        className={cn(baseDot, sizeClass, level >= 1 ? litColorClass : offDot)}
+        title="Priorytet: luz (1 kropka)"
+      />
+      <button
+        type="button"
+        onClick={() => onChange('medium')}
+        className={cn(baseDot, sizeClass, level >= 2 ? litColorClass : offDot)}
+        title="Priorytet: ważne (2 kropki)"
+      />
+      <button
+        type="button"
+        onClick={() => onChange('high')}
+        className={cn(baseDot, sizeClass, level >= 3 ? litColorClass : offDot)}
+        title="Priorytet: turbo pilne (3 kropki)"
+      />
+    </div>
+  );
+}
+
+function ProjectTurnToggle({
+  turn,
+  onToggle,
+  size = 'sm',
+  variant = 'icon',
+  className,
+}: {
+  turn: ProjectTurn;
+  onToggle: () => void;
+  size?: 'sm' | 'md';
+  variant?: 'icon' | 'label';
+  className?: string;
+}) {
+  const isMine = turn === 'mine';
+  const pad = size === 'sm' ? 'p-1.5' : 'p-2';
+
+  if (variant === 'label') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className={cn(
+          'w-full text-left text-[10px] font-bold uppercase tracking-wide py-1.5 px-2 rounded-lg border shadow-sm transition-colors',
+          isMine
+            ? 'bg-indigo-500/15 border-indigo-400/50 text-indigo-800 dark:border-indigo-400/40 dark:text-indigo-200'
+            : 'bg-amber-500/15 border-amber-400/50 text-amber-900 dark:border-amber-400/40 dark:text-amber-100',
+          className
+        )}
+        title={isMine ? 'Kliknij, aby ustawić: ruch klienta' : 'Kliknij, aby ustawić: twój ruch'}
+      >
+        {isMine ? 'Twój ruch' : 'Ruch klienta'}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      className={cn(
+        pad,
+        'shrink-0 rounded-xl border shadow-sm transition-colors leading-none',
+        isMine
+          ? 'bg-indigo-500/15 border-indigo-400/50 dark:border-indigo-400/40'
+          : 'bg-amber-500/15 border-amber-400/50 dark:border-amber-400/40',
+        className
+      )}
+      title={isMine ? 'Twoja kolej' : 'Kolej klienta'}
+    >
+      <ProjectTurnGlyph turn={turn} size={size === 'sm' ? 'sm' : 'md'} />
+    </button>
+  );
+}
+
+function ProjectCard({
+  project,
+  onClick,
+  onToggleComplete,
+  onSetPriority,
+  onToggleTurn,
+  showDollar,
+}: {
+  project: Project;
+  onClick: () => void;
+  onToggleComplete: () => void;
+  onSetPriority: (p: Priority) => void;
+  onToggleTurn: () => void;
+  showDollar: boolean;
+}) {
   const totalTasks = project.tasks?.length || 0;
   const completedTasks = project.tasks?.filter(t => t.status === 'done').length || 0;
   const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+  const turn = (project.turn || 'mine') as ProjectTurn;
+  const myTurnHighlight = turn === 'mine' && !project.completed;
 
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40 w-full max-w-[260px]",
-        project.completed && "opacity-75"
+        "rounded-2xl border shadow-sm hover:shadow-md transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40 w-full max-w-[260px]",
+        myTurnHighlight
+          ? "border-2 border-indigo-500 dark:border-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.45),0_16px_36px_-12px_rgba(79,70,229,0.55)] dark:shadow-[0_0_0_3px_rgba(129,140,248,0.5),0_16px_36px_-12px_rgba(99,102,241,0.45)] after:absolute after:inset-0 after:rounded-2xl after:bg-indigo-200/55 dark:after:bg-indigo-600/25 after:pointer-events-none"
+          : "border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700",
+        project.completed && "opacity-75",
+        myTurnHighlight &&
+          "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:ring-2 before:ring-inset before:ring-indigo-500/80 dark:before:ring-indigo-300/70 before:z-[1]"
       )}
       style={{ 
         backgroundColor: project.color ? `${project.color}20` : 'var(--tw-colors-white)',
-        borderColor: project.color ? `${project.color}60` : undefined
+        borderColor: myTurnHighlight ? undefined : (project.color ? `${project.color}60` : undefined)
       }}
     >
-      <div className="flex justify-between items-start">
+      <div className={cn('flex justify-between items-start', myTurnHighlight && 'relative z-10')}>
         <div className="flex items-start gap-1.5 min-w-0">
           <button onClick={(e) => { e.stopPropagation(); onToggleComplete(); }} className="flex-shrink-0 mt-0.5">
             {project.completed ? (
@@ -322,14 +484,33 @@ function ProjectCard({ project, onClick, onToggleComplete }: { project: Project,
               )}>
                 {project.type === 'client' ? 'CLI' : 'OWN'}
               </span>
+              <div
+                className="px-1 py-0.5 rounded-md bg-white/70 dark:bg-black/25 border border-black/10 dark:border-white/10"
+                title="Priorytet projektu"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <PriorityDots
+                  priority={(project.priority || 'medium') as Priority}
+                  onChange={onSetPriority}
+                  sizeClass="w-4 h-4"
+                  gapClass="gap-1"
+                />
+              </div>
             </div>
-            <h3 className={cn(
-              "font-bold text-sm truncate leading-tight",
-              project.completed ? "text-slate-500 line-through" : "text-slate-800 dark:text-slate-100"
-            )}>
-              {project.emoji && <span className="mr-1">{project.emoji}</span>}
-              {project.title}
-            </h3>
+            <div className="flex items-start justify-between gap-2 min-w-0 w-full">
+              <h3
+                className={cn(
+                  'font-bold text-[15px] leading-snug min-w-0 flex-1 overflow-hidden',
+                  project.completed ? 'text-slate-500 line-through' : 'text-slate-800 dark:text-slate-100'
+                )}
+              >
+                <span className="block truncate">
+                  {project.emoji ? <span className="mr-1 inline">{project.emoji}</span> : null}
+                  {project.title}
+                </span>
+              </h3>
+            </div>
             {project.description && (
               <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 leading-tight">
                 {project.description}
@@ -337,20 +518,34 @@ function ProjectCard({ project, onClick, onToggleComplete }: { project: Project,
             )}
           </div>
         </div>
+        <div className="flex items-start gap-1 flex-shrink-0 ml-1">
         {project.link && (
           <a 
             href={project.link} 
             target="_blank" 
             rel="noopener noreferrer" 
             onClick={e => e.stopPropagation()}
-            className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0 ml-1"
+            className="text-slate-400 hover:text-indigo-500 transition-colors flex-shrink-0 mt-0.5"
           >
             <LinkIcon className="w-3 h-3" />
           </a>
         )}
+        {showDollar && (
+          <div
+            className="ml-1 flex-shrink-0"
+            title="Są niezrealizowane przewidywane wpłaty w tym miesiącu"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="p-1.5 rounded-xl bg-emerald-500/15 dark:bg-emerald-400/15 border border-emerald-500/30 dark:border-emerald-400/30 shadow-sm">
+              <DollarSign className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+            </div>
+          </div>
+        )}
+        </div>
       </div>
 
-      <div className="mt-auto">
+      <div className={cn('mt-auto', myTurnHighlight && 'relative z-10')}>
         {project.deadline && (
           <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
             <Calendar className="w-3 h-3 opacity-70" />
@@ -361,6 +556,12 @@ function ProjectCard({ project, onClick, onToggleComplete }: { project: Project,
           <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400">({completedTasks}/{totalTasks})</span>
           <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300">{progress}%</span>
         </div>
+        <ProjectTurnToggle
+          turn={turn}
+          onToggle={onToggleTurn}
+          variant="label"
+          className="mb-1.5"
+        />
         <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div 
             className="h-full transition-all duration-500"
@@ -510,6 +711,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   const [editEmoji, setEditEmoji] = useState(project.emoji || '');
   const [editType, setEditType] = useState<'own' | 'client'>(project.type || 'own');
   const [editDeadline, setEditDeadline] = useState<string>(project.deadline || '');
+  const [editPriority, setEditPriority] = useState<Priority>((project.priority || 'medium') as Priority);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   
@@ -550,6 +752,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       emoji: editEmoji,
       type: editType,
       deadline: editDeadline.trim() ? editDeadline.trim() : null,
+      priority: editPriority,
     });
     setIsEditing(false);
   };
@@ -562,6 +765,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     setEditEmoji(project.emoji || '');
     setEditType(project.type || 'own');
     setEditDeadline(project.deadline || '');
+    setEditPriority((project.priority || 'medium') as Priority);
     setIsEditing(true);
   };
 
@@ -584,6 +788,12 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     );
     onUpdate({ ...project, tasks: updatedTasks });
   };
+
+  const withStatusAndCompleted = (task: ProjectTask, status: KanbanStatus): ProjectTask => ({
+    ...task,
+    status,
+    completed: status === 'done',
+  });
 
   const deleteTask = (taskId: string) => {
     onUpdate({ ...project, tasks: (project.tasks || []).filter(t => t.id !== taskId) });
@@ -639,15 +849,17 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
 
     if (isOverTask) {
       const overIndex = tasks.findIndex(t => t.id === overId);
-      if (tasks[activeIndex].status !== tasks[overIndex].status) {
-        tasks[activeIndex].status = tasks[overIndex].status;
+      const newStatus = tasks[overIndex].status;
+      if (tasks[activeIndex].status !== newStatus) {
+        tasks[activeIndex] = withStatusAndCompleted(tasks[activeIndex], newStatus);
         onUpdate({ ...project, tasks: arrayMove(tasks, activeIndex, overIndex) });
       } else {
         onUpdate({ ...project, tasks: arrayMove(tasks, activeIndex, overIndex) });
       }
     } else if (isOverColumn) {
-      if (tasks[activeIndex].status !== overId) {
-        tasks[activeIndex].status = overId as KanbanStatus;
+      const newStatus = overId as KanbanStatus;
+      if (tasks[activeIndex].status !== newStatus) {
+        tasks[activeIndex] = withStatusAndCompleted(tasks[activeIndex], newStatus);
         onUpdate({ ...project, tasks });
       }
     }
@@ -676,22 +888,33 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
 
     if (isOverTask) {
       const overIndex = tasks.findIndex(t => t.id === overId);
-      if (tasks[activeIndex].status !== tasks[overIndex].status) {
-        tasks[activeIndex].status = tasks[overIndex].status;
+      const newStatus = tasks[overIndex].status;
+      if (tasks[activeIndex].status !== newStatus) {
+        tasks[activeIndex] = withStatusAndCompleted(tasks[activeIndex], newStatus);
         onUpdate({ ...project, tasks: arrayMove(tasks, activeIndex, overIndex) });
       } else {
         onUpdate({ ...project, tasks: arrayMove(tasks, activeIndex, overIndex) });
       }
     } else if (isOverColumn) {
-      if (tasks[activeIndex].status !== overId) {
-        tasks[activeIndex].status = overId as KanbanStatus;
+      const newStatus = overId as KanbanStatus;
+      if (tasks[activeIndex].status !== newStatus) {
+        tasks[activeIndex] = withStatusAndCompleted(tasks[activeIndex], newStatus);
         onUpdate({ ...project, tasks });
       }
     }
   };
 
+  const detailTurn = (project.turn || 'mine') as ProjectTurn;
+  const detailMyTurnHighlight = detailTurn === 'mine' && !project.completed;
+
   return (
-    <div className="h-full flex flex-col gap-6 animate-in fade-in duration-200">
+    <div
+      className={cn(
+        'h-full flex flex-col gap-6 animate-in fade-in duration-200',
+        detailMyTurnHighlight &&
+          'rounded-2xl border-2 border-indigo-500 dark:border-indigo-400 bg-indigo-100/90 dark:bg-indigo-950/55 p-4 sm:p-5 shadow-[0_0_0_4px_rgba(99,102,241,0.35),0_20px_44px_-14px_rgba(79,70,229,0.45)] dark:shadow-[0_0_0_4px_rgba(129,140,248,0.35),0_20px_44px_-14px_rgba(99,102,241,0.4)]'
+      )}
+    >
       <div className="flex items-center gap-4">
         <button onClick={onBack} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors">
           <BackIcon className="w-6 h-6" />
@@ -707,8 +930,8 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
           </button>
           
           {isEditing ? (
-            <div className="flex-1 flex items-center gap-2 relative">
-              <div className="relative" ref={emojiPickerRef}>
+            <div className="flex-1 flex items-start gap-2 relative min-w-0">
+              <div className="relative flex-shrink-0" ref={emojiPickerRef}>
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xl"
@@ -730,24 +953,52 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
               <input 
                 value={editTitle} 
                 onChange={e => setEditTitle(e.target.value)}
-                className="flex-1 font-bold text-2xl bg-transparent border-b border-indigo-500 focus:outline-none text-slate-800 dark:text-white"
+                className="flex-1 min-w-0 pt-1.5 font-bold text-2xl bg-transparent border-b border-indigo-500 focus:outline-none text-slate-800 dark:text-white"
                 autoFocus
                 placeholder="Nazwa projektu..."
               />
+              <ProjectTurnToggle
+                turn={detailTurn}
+                onToggle={() =>
+                  onUpdate({
+                    ...project,
+                    turn: detailTurn === 'mine' ? 'theirs' : 'mine',
+                  })
+                }
+                size="md"
+                className="mt-1"
+              />
             </div>
           ) : (
-            <h2 className={cn(
-              "font-bold text-2xl truncate flex items-center gap-2",
-              project.completed ? "text-slate-400 line-through" : "text-slate-800 dark:text-slate-100"
-            )}>
-              {project.emoji && <span>{project.emoji}</span>}
-              {project.title}
+            <div className="flex-1 min-w-0 flex items-start gap-2">
+              <h2
+                className={cn(
+                  'font-bold text-2xl min-w-0 flex-1 overflow-hidden leading-snug',
+                  project.completed ? "text-slate-400 line-through" : "text-slate-800 dark:text-slate-100"
+                )}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  {project.emoji ? <span className="flex-shrink-0">{project.emoji}</span> : null}
+                  <span className="min-w-0 truncate">{project.title}</span>
+                </span>
+              </h2>
+              <ProjectTurnToggle
+                turn={detailTurn}
+                onToggle={() =>
+                  onUpdate({
+                    ...project,
+                    turn: detailTurn === 'mine' ? 'theirs' : 'mine',
+                  })
+                }
+                size="md"
+                className="mt-1"
+              />
               {project.link && (
-                <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-indigo-500 ml-2">
+                <a href={project.link} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-indigo-500 flex-shrink-0 mt-1.5">
                   <LinkIcon className="w-5 h-5" />
                 </a>
               )}
-            </h2>
+            </div>
           )}
         </div>
 
@@ -867,6 +1118,22 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                 >
                   CLI (Klient)
                 </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Priorytet projektu</label>
+              <div className="flex items-center gap-3">
+                <div className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <PriorityDots
+                    priority={editPriority}
+                    onChange={setEditPriority}
+                    sizeClass="w-6 h-6"
+                    gapClass="gap-2"
+                  />
+                </div>
+                <div className="text-[10px] leading-tight text-slate-400 dark:text-slate-500">
+                  Zadania w tym projekcie dziedziczą ten priorytet, jeśli nie mają ustawionego własnego.
+                </div>
               </div>
             </div>
           </div>

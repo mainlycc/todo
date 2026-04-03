@@ -1,4 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high';
+/** Czyja kolej w komunikacji z klientem: ja działam vs czekam na drugą stronę. */
+export type ProjectTurn = 'mine' | 'theirs';
 export type TaskColor = string;
 
 export interface Subtask {
@@ -103,6 +105,10 @@ export interface Project {
   emoji?: string;
   type?: 'own' | 'client';
   deadline?: string | null; // YYYY-MM-DD
+  /** Priorytet domyślny dla zadań w tym projekcie (gdy zadanie nie ma własnego). */
+  priority?: Priority;
+  /** Kolejka kontaktu: `mine` — Twoja kolej (👉), `theirs` — kolej klienta (👆). */
+  turn?: ProjectTurn;
 }
 
 export interface DailyTimelineEvent {

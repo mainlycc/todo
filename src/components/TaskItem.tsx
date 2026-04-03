@@ -9,6 +9,8 @@ interface TaskItemProps {
   key?: string | number;
   task: Task;
   projectColor?: string | null;
+  /** Emotikon projektu (wyświetlany w tagu projektu). */
+  projectEmoji?: string | null;
   onToggleComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteSeries?: (templateId: string) => void;
@@ -32,6 +34,7 @@ const priorityLabels = {
 export function TaskItem({
   task,
   projectColor,
+  projectEmoji,
   onToggleComplete,
   onDelete,
   onDeleteSeries,
@@ -230,7 +233,7 @@ export function TaskItem({
             {task.project_title && (
               <span
                 className={cn(
-                  "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap",
+                  "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1",
                   task.completed
                     ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700"
                     : "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
@@ -246,6 +249,7 @@ export function TaskItem({
                     : undefined
                 }
               >
+                {projectEmoji ? <span className="mr-0.5">{projectEmoji}</span> : null}
                 {task.project_title}
               </span>
             )}

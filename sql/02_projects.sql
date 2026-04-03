@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS projects (
     link TEXT,
     emoji TEXT,
     type TEXT,
+    priority TEXT DEFAULT 'medium',
+    turn TEXT DEFAULT 'mine',
     tasks JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
