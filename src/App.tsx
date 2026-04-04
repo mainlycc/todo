@@ -563,7 +563,31 @@ export default function App() {
         if (projectsError) console.error('Error fetching projects:', projectsError);
         if (projectsData && projectsData.length > 0) {
           console.log('Projects fetched:', projectsData.length);
-          setProjects(projectsData);
+          const list = projectsData as Project[];
+          let localById = new Map<string, Project>();
+          try {
+            const raw = localStorage.getItem('user_projects');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                localById = new Map(
+                  parsed
+                    .filter((p: unknown) => p && typeof (p as Project).id === 'string')
+                    .map((p: Project) => [p.id, p])
+                );
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+          const merged = list.map((p) => {
+            const t = p.turn;
+            if (t === 'mine' || t === 'theirs') return p;
+            const lt = localById.get(p.id)?.turn;
+            if (lt === 'mine' || lt === 'theirs') return { ...p, turn: lt };
+            return { ...p, turn: 'mine' };
+          });
+          setProjects(merged);
         } else {
           // Migrate from local storage if Supabase is empty
           const saved = localStorage.getItem('user_projects');

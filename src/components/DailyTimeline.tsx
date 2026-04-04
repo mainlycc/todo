@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Plus, MoreVertical, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2 } from 'lucide-react';
+import { Sun, Moon, Plus, MoreVertical, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2, Briefcase } from 'lucide-react';
 import { DailyTimeline as DailyTimelineData, DailyTimelineEvent } from '../types';
 import { cn } from '../utils';
 
@@ -23,6 +23,9 @@ const EVENT_TYPES = [
 ];
 
 const SLEEP_COLOR = EVENT_TYPES.find(t => t.type === 'sleep')!.color;
+
+/** Główny sen nocny (`sleep`) synchronizuje kartę „Pobudka”; drzemka w ciągu dnia (`nap`) — ten sam wygląd, bez nadpisywania pobudki. */
+const isSleepLikeType = (t: string) => t === 'sleep' || t === 'nap';
 
 const isHexColor = (value: string | undefined): value is string => {
   if (!value) return false;
@@ -71,7 +74,7 @@ const generateId = () => {
 };
 
 const DEFAULT_TEMPLATES: Array<{
-  id: 'work' | 'gym' | 'chill';
+  id: 'work' | 'gym' | 'chill' | 'nap';
   label: string;
   title: string;
   color: 'indigo' | 'emerald' | 'amber' | 'rose';
@@ -80,6 +83,7 @@ const DEFAULT_TEMPLATES: Array<{
   { id: 'work', label: 'Praca', title: 'Praca', color: 'indigo', duration: 90 },
   { id: 'gym', label: 'Siłownia', title: 'Siłownia', color: 'emerald', duration: 75 },
   { id: 'chill', label: 'Chill', title: 'Chill', color: 'amber', duration: 60 },
+  { id: 'nap', label: 'Drzemka', title: 'Drzemka', color: 'amber', duration: 30 },
 ];
 
 const isWorkBlockEvent = (ev: DailyTimelineEvent) =>
@@ -115,7 +119,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
 
   // "Sen" zawsze ma swój stały kolor, niezależnie od tego co jest zapisane w danych.
   const normalizedEvents: DailyTimelineEvent[] = events.map(ev =>
-    ev.type === 'sleep' ? { ...ev, color: SLEEP_COLOR } : ev
+    isSleepLikeType(ev.type) ? { ...ev, color: SLEEP_COLOR } : ev
   );
   const firstWorkBlockEventId = normalizedEvents.find(isWorkBlockEvent)?.id;
 
@@ -140,19 +144,28 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
     const m = targetMinutes % 60;
     const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 
+    const newEvent: DailyTimelineEvent =
+      tpl.id === 'nap'
+        ? {
+            id: generateId(),
+            type: 'nap',
+            time: timeStr,
+            title: tpl.title,
+            duration: tpl.duration,
+            color: SLEEP_COLOR,
+          }
+        : {
+            id: generateId(),
+            type: 'other',
+            time: timeStr,
+            title: tpl.title,
+            duration: tpl.duration,
+            color: tpl.color,
+          };
+
     onUpdate({
       ...updatedTimeline,
-      events: [
-        ...(updatedTimeline.events || []),
-        {
-          id: generateId(),
-          type: 'other',
-          time: timeStr,
-          title: tpl.title,
-          duration: tpl.duration,
-          color: tpl.color,
-        },
-      ],
+      events: [...(updatedTimeline.events || []), newEvent],
     });
   };
 
@@ -166,10 +179,25 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
   const sleepEvent = normalizedEvents.find(e => e.type === 'sleep');
   const sleepEventStartMin = sleepEvent ? parseTimeToMinutes(sleepEvent.time) : null;
   const sleepEventDurationMin = sleepEvent?.duration ?? null;
-  const sleepDurationEffectiveMin =
+  const nightSleepMinutes =
     sleepEventStartMin !== null && typeof sleepEventDurationMin === 'number'
       ? Math.max(0, Math.round(sleepEventDurationMin))
       : sleepDurationMin;
+
+  const napMinutesTotal = normalizedEvents
+    .filter(e => e.type === 'nap')
+    .reduce((sum, e) => sum + Math.max(0, Math.round(e.duration ?? 0)), 0);
+
+  /** Podsumowanie karty „Sen”: sen nocny (blok lub godziny) + wszystkie drzemki. */
+  const totalSleepSummaryMin =
+    nightSleepMinutes === null && napMinutesTotal === 0
+      ? null
+      : (nightSleepMinutes ?? 0) + napMinutesTotal;
+
+  const workMinutesTotal = normalizedEvents
+    .filter(isWorkBlockEvent)
+    .reduce((sum, e) => sum + Math.max(0, Math.round(e.duration ?? 0)), 0);
+
   const sleepEndEffective =
     sleepEventStartMin !== null && typeof sleepEventDurationMin === 'number'
       ? formatClock(sleepEventStartMin + sleepEventDurationMin)
@@ -234,7 +262,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
 
         if (resizeEdge === 'bottom') {
           const newDuration = Math.max(SNAP_MINUTES, totalMinutes - startMinutes);
-          newEvents[eventIndex] = { ...event, duration: newDuration, color: event.type === 'sleep' ? SLEEP_COLOR : event.color };
+          newEvents[eventIndex] = { ...event, duration: newDuration, color: isSleepLikeType(event.type) ? SLEEP_COLOR : event.color };
         } else if (resizeEdge === 'top') {
           const endMinutes = startMinutes + currentDuration;
           const newStartMinutes = Math.min(totalMinutes, endMinutes - SNAP_MINUTES);
@@ -247,7 +275,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
             ...event, 
             time: `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`,
             duration: newDuration,
-            color: event.type === 'sleep' ? SLEEP_COLOR : event.color,
+            color: isSleepLikeType(event.type) ? SLEEP_COLOR : event.color,
           };
         }
         onUpdate({ ...timeline, events: newEvents });
@@ -270,7 +298,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
         if (event.time !== timeStr) {
           const newEvents = timeline.events.map(ev =>
             ev.id === draggingEventId
-              ? { ...ev, time: timeStr, color: ev.type === 'sleep' ? SLEEP_COLOR : ev.color }
+              ? { ...ev, time: timeStr, color: isSleepLikeType(ev.type) ? SLEEP_COLOR : ev.color }
               : ev
           );
           onUpdate({ ...timeline, events: newEvents });
@@ -342,10 +370,10 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
     const target = timeline.events.find(e => e.id === eventId);
     if (!target) return;
     // Zablokuj ustawienie koloru snu na innych wydarzeniach.
-    if (target.type !== 'sleep' && color === SLEEP_COLOR) return;
+    if (!isSleepLikeType(target.type) && color === SLEEP_COLOR) return;
     const newEvents = timeline.events.map(e =>
       e.id === eventId
-        ? { ...e, color: e.type === 'sleep' ? SLEEP_COLOR : color }
+        ? { ...e, color: isSleepLikeType(e.type) ? SLEEP_COLOR : color }
         : e
     );
     onUpdate({ ...timeline, events: newEvents });
@@ -368,11 +396,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
         </div>
       </div>
 
-      {/* Szablony wydarzeń */}
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
-          Szablony
-        </div>
         {DEFAULT_TEMPLATES.map(tpl => {
           const colorCfg = COLORS.find(c => c.value === tpl.color) || COLORS[0];
           return (
@@ -386,7 +410,14 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
               )}
               title={`Dodaj: ${tpl.title} (start: teraz, ${tpl.duration} min)`}
             >
-              <span className={cn("inline-block w-2 h-2 rounded-full mr-2 align-middle", colorCfg.bg)} />
+              {tpl.id === 'nap' ? (
+                <span
+                  className="inline-block w-2 h-2 rounded-full mr-2 align-middle border border-white/30 dark:border-slate-700"
+                  style={{ backgroundColor: SLEEP_COLOR }}
+                />
+              ) : (
+                <span className={cn("inline-block w-2 h-2 rounded-full mr-2 align-middle", colorCfg.bg)} />
+              )}
               <span className="align-middle">{tpl.label}</span>
             </button>
           );
@@ -394,35 +425,35 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
       </div>
 
       {/* Wake Up & Sleep Inputs */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[84px] flex flex-col justify-between">
-          <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mb-1 block">Pobudka</label>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Pobudka</label>
           <div className="flex items-center gap-2">
-            <Sun className="w-4 h-4 text-amber-500" />
+            <Sun className="w-4 h-4 text-amber-500 shrink-0" />
             <input 
               type="time" 
               value={timeline?.wake_up_time || ''} 
               onChange={(e) => updateWakeUp(e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-lg font-medium w-full p-0 dark:text-white"
+              className="bg-transparent border-none focus:ring-0 text-sm font-medium tabular-nums w-full p-0 text-slate-900 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
             />
           </div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Koniec snu
-          </div>
         </div>
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[84px] flex flex-col justify-between">
-          <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold mb-1 block">Sen</label>
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Sen</label>
           <div className="flex items-center justify-between gap-2">
-            <Moon className="w-4 h-4" style={{ color: SLEEP_COLOR }} />
-            <div
-              className="text-lg font-black tracking-tight tabular-nums"
-              style={{ color: withAlpha(SLEEP_COLOR, 0.95) }}
-            >
-              {sleepDurationEffectiveMin === null ? '—' : formatMinutes(sleepDurationEffectiveMin)}
+            <Moon className="w-4 h-4 shrink-0" style={{ color: SLEEP_COLOR }} />
+            <div className="text-sm font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">
+              {totalSleepSummaryMin === null ? '—' : formatMinutes(totalSleepSummaryMin)}
             </div>
           </div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Długość snu
+        </div>
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+          <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Praca</label>
+          <div className="flex items-center justify-between gap-2">
+            <Briefcase className="w-4 h-4 text-indigo-500 shrink-0" />
+            <div className="text-sm font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">
+              {formatMinutes(workMinutesTotal)}
+            </div>
           </div>
         </div>
       </div>
@@ -498,7 +529,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
           const [h, m] = event.time.split(':').map(Number);
           const top = (h * ROW_HEIGHT) + (m * PIXELS_PER_MINUTE);
           const height = (event.duration || 60) * PIXELS_PER_MINUTE;
-          const isSleep = event.type === 'sleep';
+          const isSleep = isSleepLikeType(event.type);
           const isWorkBlock = isWorkBlockEvent(event);
           const isNamed = typeof event.color === 'string' && COLORS.some(c => c.value === event.color);
           const colorCfg = isNamed ? (COLORS.find(c => c.value === event.color) || COLORS[0]) : COLORS[0];
@@ -582,7 +613,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
                     />
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover/event:opacity-100 transition-opacity shrink-0">
-                    {event.type !== 'sleep' && COLORS.map(c => (
+                    {!isSleepLikeType(event.type) && COLORS.map(c => (
                       <button
                         key={c.value}
                         onMouseDown={(e) => e.stopPropagation()}

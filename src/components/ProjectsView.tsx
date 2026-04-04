@@ -120,7 +120,9 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
     const newProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
     setProjects(newProjects);
 
-    const { error } = await supabase.from('projects').update(updatedProject).eq('id', updatedProject.id);
+    // Nie wysyłaj `id` w treści PATCH — PostgREST może odrzucić żądanie; wtedy nic nie trafia do bazy.
+    const { id, ...row } = updatedProject;
+    const { error } = await supabase.from('projects').update(row).eq('id', id);
     if (error) {
       console.error('Error updating project in Supabase:', error);
       // If it fails, we might want to revert or just leave it local
@@ -391,10 +393,21 @@ function ProjectTurnToggle({
         }}
         onPointerDown={(e) => e.stopPropagation()}
         className={cn(
-          'w-full text-left text-[10px] font-bold uppercase tracking-wide py-1.5 px-2 rounded-lg border shadow-sm transition-colors',
+          'w-full text-left text-[10px] font-bold uppercase tracking-wide py-1.5 px-2.5 rounded-lg border-2 shadow-sm transition-all',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
           isMine
-            ? 'bg-indigo-500/15 border-indigo-400/50 text-indigo-800 dark:border-indigo-400/40 dark:text-indigo-200'
-            : 'bg-amber-500/15 border-amber-400/50 text-amber-900 dark:border-amber-400/40 dark:text-amber-100',
+            ? [
+                'bg-emerald-600 border-emerald-700 text-white',
+                'hover:bg-emerald-500 hover:border-emerald-600',
+                'dark:bg-emerald-600 dark:border-emerald-500 dark:hover:bg-emerald-500',
+                'focus-visible:ring-emerald-400',
+              ]
+            : [
+                'bg-red-600 border-red-700 text-white',
+                'hover:bg-red-500 hover:border-red-600',
+                'dark:bg-red-600 dark:border-red-500 dark:hover:bg-red-500',
+                'focus-visible:ring-red-400',
+              ],
           className
         )}
         title={isMine ? 'Kliknij, aby ustawić: ruch klienta' : 'Kliknij, aby ustawić: twój ruch'}
@@ -414,15 +427,30 @@ function ProjectTurnToggle({
       onPointerDown={(e) => e.stopPropagation()}
       className={cn(
         pad,
-        'shrink-0 rounded-xl border shadow-sm transition-colors leading-none',
+        'shrink-0 rounded-xl border-2 shadow-sm transition-all leading-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
         isMine
-          ? 'bg-indigo-500/15 border-indigo-400/50 dark:border-indigo-400/40'
-          : 'bg-amber-500/15 border-amber-400/50 dark:border-amber-400/40',
+          ? [
+              'bg-emerald-600 border-emerald-700',
+              'hover:bg-emerald-500 hover:border-emerald-600',
+              'dark:bg-emerald-600 dark:border-emerald-500 dark:hover:bg-emerald-500',
+              'focus-visible:ring-emerald-400',
+            ]
+          : [
+              'bg-red-600 border-red-700',
+              'hover:bg-red-500 hover:border-red-600',
+              'dark:bg-red-600 dark:border-red-500 dark:hover:bg-red-500',
+              'focus-visible:ring-red-400',
+            ],
         className
       )}
       title={isMine ? 'Twoja kolej' : 'Kolej klienta'}
     >
-      <ProjectTurnGlyph turn={turn} size={size === 'sm' ? 'sm' : 'md'} />
+      <ProjectTurnGlyph
+        turn={turn}
+        size={size === 'sm' ? 'sm' : 'md'}
+        className="brightness-110 contrast-125 drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]"
+      />
     </button>
   );
 }
@@ -454,11 +482,11 @@ function ProjectCard({
       className={cn(
         "rounded-2xl border shadow-sm hover:shadow-md transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40 w-full max-w-[260px]",
         myTurnHighlight
-          ? "border-2 border-indigo-500 dark:border-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.45),0_16px_36px_-12px_rgba(79,70,229,0.55)] dark:shadow-[0_0_0_3px_rgba(129,140,248,0.5),0_16px_36px_-12px_rgba(99,102,241,0.45)] after:absolute after:inset-0 after:rounded-2xl after:bg-indigo-200/55 dark:after:bg-indigo-600/25 after:pointer-events-none"
+          ? "border-2 border-emerald-500 dark:border-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.45),0_16px_36px_-12px_rgba(5,150,105,0.55)] dark:shadow-[0_0_0_3px_rgba(52,211,153,0.5),0_16px_36px_-12px_rgba(16,185,129,0.45)] after:absolute after:inset-0 after:rounded-2xl after:bg-emerald-200/55 dark:after:bg-emerald-600/25 after:pointer-events-none"
           : "border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700",
         project.completed && "opacity-75",
         myTurnHighlight &&
-          "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:ring-2 before:ring-inset before:ring-indigo-500/80 dark:before:ring-indigo-300/70 before:z-[1]"
+          "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:ring-2 before:ring-inset before:ring-emerald-500/80 dark:before:ring-emerald-300/70 before:z-[1]"
       )}
       style={{ 
         backgroundColor: project.color ? `${project.color}20` : 'var(--tw-colors-white)',
@@ -912,7 +940,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       className={cn(
         'h-full flex flex-col gap-6 animate-in fade-in duration-200',
         detailMyTurnHighlight &&
-          'rounded-2xl border-2 border-indigo-500 dark:border-indigo-400 bg-indigo-100/90 dark:bg-indigo-950/55 p-4 sm:p-5 shadow-[0_0_0_4px_rgba(99,102,241,0.35),0_20px_44px_-14px_rgba(79,70,229,0.45)] dark:shadow-[0_0_0_4px_rgba(129,140,248,0.35),0_20px_44px_-14px_rgba(99,102,241,0.4)]'
+          'rounded-2xl border-2 border-emerald-500 dark:border-emerald-400 bg-emerald-100/90 dark:bg-emerald-950/55 p-4 sm:p-5 shadow-[0_0_0_4px_rgba(16,185,129,0.35),0_20px_44px_-14px_rgba(5,150,105,0.45)] dark:shadow-[0_0_0_4px_rgba(52,211,153,0.35),0_20px_44px_-14px_rgba(16,185,129,0.4)]'
       )}
     >
       <div className="flex items-center gap-4">
