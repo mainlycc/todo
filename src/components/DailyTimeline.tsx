@@ -74,16 +74,17 @@ const generateId = () => {
 };
 
 const DEFAULT_TEMPLATES: Array<{
-  id: 'work' | 'gym' | 'chill' | 'nap';
+  id: 'work' | 'gym' | 'chill' | 'nap' | 'procrastination';
   label: string;
   title: string;
-  color: 'indigo' | 'emerald' | 'amber' | 'rose';
+  color: 'indigo' | 'emerald' | 'amber' | 'rose' | 'fuchsia';
   duration: number;
 }> = [
   { id: 'work', label: 'Praca', title: 'Praca', color: 'indigo', duration: 90 },
   { id: 'gym', label: 'Siłownia', title: 'Siłownia', color: 'emerald', duration: 75 },
   { id: 'chill', label: 'Chill', title: 'Chill', color: 'amber', duration: 60 },
   { id: 'nap', label: 'Drzemka', title: 'Drzemka', color: 'amber', duration: 30 },
+  { id: 'procrastination', label: 'Prokrastynacja', title: 'Prokrastynacja', color: 'fuchsia', duration: 45 },
 ];
 
 const isWorkBlockEvent = (ev: DailyTimelineEvent) =>
@@ -106,6 +107,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
     { name: 'Emerald', value: 'emerald', bg: 'bg-emerald-500', border: 'border-emerald-200', darkBg: 'dark:bg-emerald-900/20', darkBorder: 'dark:border-emerald-800' },
     { name: 'Amber', value: 'amber', bg: 'bg-amber-500', border: 'border-amber-200', darkBg: 'dark:bg-amber-900/20', darkBorder: 'dark:border-amber-800' },
     { name: 'Rose', value: 'rose', bg: 'bg-rose-500', border: 'border-rose-200', darkBg: 'dark:bg-rose-900/20', darkBorder: 'dark:border-rose-800' },
+    { name: 'Fuchsia', value: 'fuchsia', bg: 'bg-fuchsia-500', border: 'border-fuchsia-200', darkBg: 'dark:bg-fuchsia-900/20', darkBorder: 'dark:border-fuchsia-800' },
   ];
 
   useEffect(() => {
