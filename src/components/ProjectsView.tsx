@@ -188,7 +188,7 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
           <select 
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/6 rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="created_at">Sortuj: Data dodania</option>
             <option value="type">Sortuj: Typ (OWN/CLI)</option>
@@ -206,7 +206,7 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
 
       <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
         {isAddingProject && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 mb-6">
+          <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 mb-6">
             <input
               type="text"
               value={newProjectTitle}
@@ -226,7 +226,7 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
                     "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
                     newProjectType === 'own' 
                       ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 ring-1 ring-indigo-500" 
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                      : "bg-slate-100 text-slate-600 dark:bg-tp-muted dark:text-slate-400 hover:bg-slate-200"
                   )}
                 >
                   OWN (Własny)
@@ -238,7 +238,7 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
                     "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
                     newProjectType === 'client' 
                       ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-500" 
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                      : "bg-slate-100 text-slate-600 dark:bg-tp-muted dark:text-slate-400 hover:bg-slate-200"
                   )}
                 >
                   CLI (Klient)
@@ -246,7 +246,7 @@ export function ProjectsView({ projects, setProjects, payments }: ProjectsViewPr
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setIsAddingProject(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+              <button onClick={() => setIsAddingProject(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors">
                 Anuluj
               </button>
               <button onClick={handleAddProject} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
@@ -341,7 +341,7 @@ function PriorityDots({
   const baseDot =
     'rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.18)]';
 
-  const offDot = 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
+  const offDot = 'bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600';
 
   return (
     <div className={cn('flex items-center', gapClass, className)} aria-label="Priorytet">
@@ -483,7 +483,7 @@ function ProjectCard({
         "rounded-2xl border shadow-sm hover:shadow-md transition-all cursor-pointer p-3 flex flex-col gap-2 relative overflow-hidden group h-40 w-full max-w-[260px]",
         myTurnHighlight
           ? "border-2 border-emerald-500 dark:border-emerald-400 shadow-[0_0_0_3px_rgba(16,185,129,0.45),0_16px_36px_-12px_rgba(5,150,105,0.55)] dark:shadow-[0_0_0_3px_rgba(52,211,153,0.5),0_16px_36px_-12px_rgba(16,185,129,0.45)] after:absolute after:inset-0 after:rounded-2xl after:bg-emerald-200/55 dark:after:bg-emerald-600/25 after:pointer-events-none"
-          : "border border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700",
+          : "border border-slate-200 dark:border-white/6 hover:border-indigo-300 dark:hover:border-indigo-700",
         project.completed && "opacity-75",
         myTurnHighlight &&
           "before:pointer-events-none before:absolute before:inset-0 before:rounded-2xl before:ring-2 before:ring-inset before:ring-emerald-500/80 dark:before:ring-emerald-300/70 before:z-[1]"
@@ -590,7 +590,7 @@ function ProjectCard({
           variant="label"
           className="mb-1.5"
         />
-        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-1 w-full bg-slate-100 dark:bg-tp-muted rounded-full overflow-hidden">
           <div 
             className="h-full transition-all duration-500"
             style={{ width: `${progress}%`, backgroundColor: project.color || '#6366f1' }}
@@ -637,7 +637,7 @@ function SortableTask({
       {...attributes} 
       {...listeners}
       className={cn(
-        "bg-white dark:bg-slate-900 p-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50 group cursor-grab active:cursor-grabbing",
+        "bg-white dark:bg-tp-surface p-2.5 rounded-xl shadow-sm border border-slate-200 dark:border-white/[0.08] group cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50 ring-2 ring-indigo-500"
       )}
     >
@@ -656,7 +656,7 @@ function SortableTask({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
-      <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-100 dark:border-white/6">
         <button 
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onMoveLeft(); }}
@@ -828,7 +828,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   };
 
   const columns: { id: KanbanStatus; label: string; color: string }[] = [
-    { id: 'poczekalnia', label: 'Poczekalnia', color: 'bg-slate-100 dark:bg-slate-800' },
+    { id: 'poczekalnia', label: 'Poczekalnia', color: 'bg-slate-100 dark:bg-tp-muted' },
     { id: 'do_zrobienia', label: 'Do zrobienia', color: 'bg-blue-50 dark:bg-blue-900/20' },
     { id: 'in_progress', label: 'W trakcie', color: 'bg-amber-50 dark:bg-amber-900/20' },
     { id: 'done', label: 'Zrobione', color: 'bg-emerald-50 dark:bg-emerald-900/20' }
@@ -962,7 +962,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
               <div className="relative flex-shrink-0" ref={emojiPickerRef}>
                 <button 
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xl"
+                  className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-tp-muted rounded-lg hover:bg-slate-200 dark:hover:bg-tp-raised transition-colors text-xl"
                 >
                   {editEmoji || <Smile className="w-5 h-5 text-slate-400" />}
                 </button>
@@ -1037,7 +1037,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
               Zapisz
             </button>
           ) : (
-            <button onClick={startEditing} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-colors">
+            <button onClick={startEditing} className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-tp-muted hover:bg-slate-200 dark:hover:bg-tp-raised text-slate-700 dark:text-slate-300 rounded-xl transition-colors">
               <Edit2 className="w-4 h-4" />
               Edytuj
             </button>
@@ -1049,14 +1049,14 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       </div>
 
       {isEditing && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-tp-surface rounded-2xl p-5 border border-slate-200 dark:border-white/6 shadow-sm space-y-4">
           <div>
             <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Opis projektu</label>
             <textarea
               value={editDesc}
               onChange={e => setEditDesc(e.target.value)}
               placeholder="Dodaj szczegółowy opis swojego projektu..."
-              className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[80px] text-slate-700 dark:text-slate-300"
+              className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[80px] text-slate-700 dark:text-slate-300"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1069,7 +1069,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                   value={editLink}
                   onChange={e => setEditLink(e.target.value)}
                   placeholder="https://..."
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                  className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
                 />
               </div>
             </div>
@@ -1081,7 +1081,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                   type="date"
                   value={editDeadline}
                   onChange={e => setEditDeadline(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                  className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
                 />
               </div>
               {editDeadline && (
@@ -1111,7 +1111,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                 <button
                   onClick={() => setEditColor('')}
                   className={cn(
-                    "w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors",
+                    "w-8 h-8 rounded-full border-2 border-dashed border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors",
                     !editColor ? "ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900" : ""
                   )}
                 >
@@ -1129,7 +1129,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                     "px-4 py-2 rounded-xl text-sm font-bold transition-all",
                     editType === 'own' 
                       ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 ring-1 ring-indigo-500" 
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                      : "bg-slate-100 text-slate-600 dark:bg-tp-muted dark:text-slate-400 hover:bg-slate-200"
                   )}
                 >
                   OWN (Własny)
@@ -1141,7 +1141,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                     "px-4 py-2 rounded-xl text-sm font-bold transition-all",
                     editType === 'client' 
                       ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 ring-1 ring-amber-500" 
-                      : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 hover:bg-slate-200"
+                      : "bg-slate-100 text-slate-600 dark:bg-tp-muted dark:text-slate-400 hover:bg-slate-200"
                   )}
                 >
                   CLI (Klient)
@@ -1151,7 +1151,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Priorytet projektu</label>
               <div className="flex items-center gap-3">
-                <div className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="px-3 py-2 rounded-xl bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/10 shadow-sm">
                   <PriorityDots
                     priority={editPriority}
                     onChange={setEditPriority}
@@ -1189,7 +1189,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                 onChange={e => setNewTaskTitle(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleAddTask()}
                 placeholder="Dodaj nowe zadanie do poczekalni..."
-                className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300 shadow-sm"
+                className="flex-1 bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/6 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300 shadow-sm"
               />
               <button 
                 onClick={handleAddTask}
@@ -1242,7 +1242,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
           {/* Notatki */}
           <div className="w-full lg:w-[400px] lg:flex-shrink-0 space-y-4 flex flex-col h-full min-h-[280px] lg:min-h-0">
             <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Notatki</label>
-            <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex flex-col p-4 min-h-[240px]">
+            <div className="flex-1 bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/6 rounded-2xl overflow-hidden shadow-sm flex flex-col p-4 min-h-[240px]">
               <RichNoteFormattingMenuBar editor={editor} />
               <div
                 className="flex-1 overflow-y-auto custom-scrollbar cursor-text min-h-0"

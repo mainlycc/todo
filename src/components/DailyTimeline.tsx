@@ -390,7 +390,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-slate-800 mt-6">
+    <div className="bg-white dark:bg-tp-surface rounded-2xl p-6 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-200 dark:border-white/6 mt-6">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Clock className="w-5 h-5 text-indigo-500" />
@@ -408,13 +408,13 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
               onClick={() => addTemplateEvent(tpl)}
               className={cn(
                 "px-3 py-1.5 rounded-xl border text-xs font-bold transition-all hover:translate-y-[-1px] hover:shadow-sm",
-                "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200"
+                "bg-white dark:bg-tp-surface border-slate-200 dark:border-white/6 text-slate-700 dark:text-slate-200"
               )}
               title={`Dodaj: ${tpl.title} (start: teraz, ${tpl.duration} min)`}
             >
               {tpl.id === 'nap' ? (
                 <span
-                  className="inline-block w-2 h-2 rounded-full mr-2 align-middle border border-white/30 dark:border-slate-700"
+                  className="inline-block w-2 h-2 rounded-full mr-2 align-middle border border-white/30 dark:border-white/10"
                   style={{ backgroundColor: SLEEP_COLOR }}
                 />
               ) : (
@@ -428,7 +428,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
 
       {/* Wake Up & Sleep Inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+        <div className="bg-slate-50 dark:bg-tp-surface rounded-xl border border-slate-200 dark:border-white/10 p-3 flex flex-col gap-2">
           <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Pobudka</label>
           <div className="flex items-center gap-2">
             <Sun className="w-4 h-4 text-amber-500 shrink-0" />
@@ -440,7 +440,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
             />
           </div>
         </div>
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+        <div className="bg-slate-50 dark:bg-tp-surface rounded-xl border border-slate-200 dark:border-white/10 p-3 flex flex-col gap-2">
           <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Sen</label>
           <div className="flex items-center justify-between gap-2">
             <Moon className="w-4 h-4 shrink-0" style={{ color: SLEEP_COLOR }} />
@@ -449,7 +449,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
             </div>
           </div>
         </div>
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex flex-col gap-2">
+        <div className="bg-slate-50 dark:bg-tp-surface rounded-xl border border-slate-200 dark:border-white/10 p-3 flex flex-col gap-2">
           <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Praca</label>
           <div className="flex items-center justify-between gap-2">
             <Briefcase className="w-4 h-4 text-indigo-500 shrink-0" />
@@ -463,7 +463,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
       {/* Hourly Timeline */}
       <div id="timeline-grid" className="relative">
         {/* Vertical Line */}
-        <div className="absolute left-[52px] top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-800" />
+        <div className="absolute left-[52px] top-0 bottom-0 w-px bg-slate-200 dark:bg-tp-muted" />
 
         {/* Current Time Indicator (Green Line) */}
         {(() => {
@@ -475,10 +475,10 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
               className="absolute left-0 right-0 z-30 flex items-center pointer-events-none transition-all duration-1000"
               style={{ top: `${topOffset}px` }}
             >
-              <div className="w-12 text-right pr-2 text-[9px] font-bold text-emerald-500 bg-white dark:bg-slate-900">
+              <div className="w-12 text-right pr-2 text-[9px] font-bold text-emerald-500 bg-white dark:bg-tp-surface">
                 {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 -ml-[5px]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-tp-surface -ml-[5px]" />
               <div className="flex-1 h-px bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             </div>
           );
@@ -487,12 +487,16 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
         {hours.map((hour) => {
           const timeStr = `${hour.toString().padStart(2, '0')}:00`;
           return (
-            <div key={hour} style={{ height: `${ROW_HEIGHT}px` }} className="flex items-center gap-4 group relative border-t border-slate-100 dark:border-slate-800/50 first:border-t-0">
+            <div
+              key={hour}
+              style={{ height: `${ROW_HEIGHT}px` }}
+              className="flex items-center gap-4 group relative border-t border-slate-200/35 dark:border-white/[0.05] first:border-t-0"
+            >
               <div className="w-9 text-right text-[11px] font-mono text-slate-400 dark:text-slate-500">
                 {timeStr}
               </div>
               <div className="relative z-10">
-                <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800 group-hover:bg-slate-300 dark:group-hover:bg-slate-700 transition-colors" />
+                <div className="w-2 h-2 rounded-full bg-slate-200 dark:bg-tp-muted group-hover:bg-slate-300 dark:group-hover:bg-slate-700 transition-colors" />
               </div>
               <div className="flex-1 h-full flex items-center">
                 <button 
@@ -621,7 +625,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={() => updateEventColor(event.id, c.value)}
                         className={cn(
-                          "w-3 h-3 rounded-full border border-white dark:border-slate-900 transition-transform hover:scale-125",
+                          "w-3 h-3 rounded-full border border-white dark:border-tp-surface transition-transform hover:scale-125",
                           c.bg,
                           event.color === c.value && "ring-1 ring-offset-1 ring-slate-400"
                         )}
@@ -631,7 +635,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
                     <button 
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={() => deleteEvent(event.id)}
-                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-rose-500 transition-colors"
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-tp-raised rounded text-slate-400 hover:text-rose-500 transition-colors"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -649,7 +653,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
 
                 {isWorkBlock && event.id === firstWorkBlockEventId &&
                   (workBlockDoneTasks.length > 0 || (event.notes || '').trim().length > 0) && (
-                  <div className="mt-1 pt-1.5 border-t border-slate-300/40 dark:border-slate-600/40 min-h-0 max-h-[160px] overflow-y-auto">
+                  <div className="mt-1 pt-1.5 border-t border-slate-200/30 dark:border-white/[0.06] min-h-0 max-h-[160px] overflow-y-auto">
                     {workBlockDoneTasks.map((t) => (
                       <div
                         key={t.id}

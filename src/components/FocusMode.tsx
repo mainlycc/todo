@@ -109,14 +109,14 @@ export function FocusMode({
       <div className="flex items-center gap-4">
         <button
           onClick={onBack}
-          className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          className="p-2 bg-white dark:bg-tp-surface rounded-xl border border-slate-200 dark:border-white/6 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-tp-muted transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate flex-grow">
           {task.title}
         </h2>
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 bg-white dark:bg-tp-surface px-4 py-2 rounded-xl border border-slate-200 dark:border-white/6">
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Ukończone Pomodoro:</span>
           <span className="text-lg font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
             🍅 {task.pomodoros_completed || 0}
@@ -128,13 +128,13 @@ export function FocusMode({
         {/* Left Column: Timer & Notes */}
         <div className="flex flex-col gap-6">
           {/* Pomodoro Timer */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col items-center justify-center shadow-sm transition-colors">
-            <div className="flex gap-2 mb-8 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+          <div className="bg-white dark:bg-tp-surface rounded-3xl border border-slate-200 dark:border-white/6 p-8 flex flex-col items-center justify-center shadow-sm transition-colors">
+            <div className="flex gap-2 mb-8 bg-slate-100 dark:bg-tp-muted p-1 rounded-xl">
               <button
                 onClick={() => switchMode('work')}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  timerMode === 'work' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  timerMode === 'work' ? "bg-white dark:bg-tp-raised text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                 )}
               >
                 Praca (25m)
@@ -143,7 +143,7 @@ export function FocusMode({
                 onClick={() => switchMode('break')}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                  timerMode === 'break' ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  timerMode === 'break' ? "bg-white dark:bg-tp-raised text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                 )}
               >
                 Przerwa (5m)
@@ -169,7 +169,7 @@ export function FocusMode({
               </button>
               <button
                 onClick={resetTimer}
-                className="w-12 h-12 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                className="w-12 h-12 rounded-full flex items-center justify-center bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-tp-raised transition-colors"
                 title="Resetuj stoper"
               >
                 <RotateCcw className="w-5 h-5" />
@@ -178,20 +178,20 @@ export function FocusMode({
           </div>
 
           {/* Notes */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 flex-grow flex flex-col shadow-sm transition-colors">
+          <div className="bg-white dark:bg-tp-surface rounded-3xl border border-slate-200 dark:border-white/6 p-6 flex-grow flex flex-col shadow-sm transition-colors">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Notatki</h3>
             <textarea
               value={localNotes}
               onChange={handleNotesChange}
               onBlur={handleNotesBlur}
               placeholder="Zapisz swoje przemyślenia, linki lub ważne informacje dotyczące tego zadania..."
-              className="flex-grow w-full resize-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
+              className="flex-grow w-full resize-none bg-slate-50 dark:bg-tp-muted border border-slate-200 dark:border-white/10 rounded-xl p-4 text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
             />
           </div>
         </div>
 
         {/* Right Column: Subtasks */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 flex flex-col shadow-sm transition-colors">
+        <div className="bg-white dark:bg-tp-surface rounded-3xl border border-slate-200 dark:border-white/6 p-6 flex flex-col shadow-sm transition-colors">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Podzadania</h3>
           
           <form onSubmit={handleAddSubtask} className="flex items-center gap-2 mb-6">
@@ -200,7 +200,7 @@ export function FocusMode({
               value={newSubtaskTitle}
               onChange={(e) => setNewSubtaskTitle(e.target.value)}
               placeholder="Dodaj nowy krok..."
-              className="flex-grow bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
+              className="flex-grow bg-slate-50 dark:bg-tp-muted border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 text-slate-900 dark:text-slate-100"
             />
             <button
               type="submit"
@@ -218,7 +218,7 @@ export function FocusMode({
               </div>
             ) : (
               task.subtasks.map(subtask => (
-                <div key={subtask.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 group border border-transparent hover:border-slate-100 dark:hover:border-slate-700 transition-colors">
+                <div key={subtask.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-tp-muted group border border-transparent hover:border-slate-100 dark:hover:border-white/10 transition-colors">
                   <button
                     onClick={() => handleToggleSubtaskLocal(subtask.id)}
                     className="text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex-shrink-0"

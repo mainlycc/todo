@@ -19,31 +19,31 @@ const MenuBar = ({ editor }: { editor: any }) => {
   }
 
   return (
-    <div className="flex items-center gap-1 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+    <div className="flex items-center gap-1 mb-2 pb-2 border-b border-slate-100 dark:border-white/6">
       <button
         onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`p-1 rounded-md transition-colors ${editor.isActive('bold') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1 rounded-md transition-colors ${editor.isActive('bold') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Pogrubienie"
       >
         <Bold className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        className={`p-1 rounded-md transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1 rounded-md transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Nagłówek"
       >
         <Heading2 className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-1 rounded-md transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1 rounded-md transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Lista"
       >
         <ListIcon className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={() => editor.chain().focus().toggleHighlight().run()}
-        className={`p-1 rounded-md transition-colors ${editor.isActive('highlight') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1 rounded-md transition-colors ${editor.isActive('highlight') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Wyróżnienie"
       >
         <Highlighter className="w-3.5 h-3.5" />
@@ -79,8 +79,8 @@ function RuleEditor({ initialContent, onSave, onCancel }: { initialContent: stri
       <div className="flex-1 overflow-y-auto cursor-text" onClick={() => editor?.commands.focus()}>
         <EditorContent editor={editor} className="h-full" />
       </div>
-      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-        <button onClick={onCancel} className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors font-medium">
+      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-white/6">
+        <button onClick={onCancel} className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors font-medium">
           <X className="w-4 h-4" /> Anuluj
         </button>
         <button
@@ -274,13 +274,13 @@ export function RulesView() {
       <div className="flex-1 overflow-y-auto pb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {editingId === 'new' && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px] animate-in fade-in zoom-in duration-200">
+            <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px] animate-in fade-in zoom-in duration-200">
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 placeholder="Tytuł (np. Zasady dnia)"
-                className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-slate-700 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+                className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-white/10 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
                 autoFocus
               />
               <RuleEditor initialContent="" onSave={(content) => handleSave('new', content)} onCancel={() => setEditingId(null)} />
@@ -289,28 +289,28 @@ export function RulesView() {
 
           {cards.map((card) =>
             editingId === card.id ? (
-              <div key={card.id} className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px]">
+              <div key={card.id} className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px]">
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="Tytuł (np. Zasady dnia)"
-                  className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-slate-700 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+                  className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-white/10 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
                 />
                 <RuleEditor initialContent={card.content} onSave={(content) => handleSave(card.id, content)} onCancel={() => setEditingId(null)} />
               </div>
             ) : (
               <div
                 key={card.id}
-                className="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 flex flex-col h-[380px] group hover:shadow-md transition-shadow"
+                className="relative bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-sm p-5 flex flex-col h-[380px] group hover:shadow-md transition-shadow"
               >
                 {deletingId === card.id && (
-                  <div className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 z-10">
+                  <div className="absolute inset-0 bg-white/95 dark:bg-tp-surface/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 z-10">
                     <Trash2 className="w-12 h-12 text-red-500 mb-4 opacity-80" />
                     <p className="text-xl font-bold text-slate-800 dark:text-white mb-2 text-center">Usunąć tę kartę?</p>
                     <p className="text-slate-500 dark:text-slate-400 text-center mb-6 text-sm">Ta operacja jest nieodwracalna.</p>
                     <div className="flex gap-3 w-full">
-                      <button onClick={() => setDeletingId(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium transition-colors">
+                      <button onClick={() => setDeletingId(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-tp-muted dark:hover:bg-tp-raised text-slate-700 dark:text-slate-300 rounded-xl font-medium transition-colors">
                         Anuluj
                       </button>
                       <button onClick={() => confirmDelete(card.id)} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors shadow-sm">
@@ -320,7 +320,7 @@ export function RulesView() {
                   </div>
                 )}
 
-                <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-100 dark:border-white/6">
                   <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">{card.title}</h3>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button

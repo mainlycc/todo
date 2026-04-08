@@ -6,6 +6,7 @@ import {
   RICH_NOTE_EDITOR_CONTENT_CLASS,
   RichNoteFormattingMenuBar,
 } from './richNoteEditor';
+import { cn } from '../utils';
 
 interface DailyNotePanelProps {
   date: string;
@@ -19,7 +20,10 @@ export function DailyNotePanel({ date, content, onChange }: DailyNotePanelProps)
     content: content || '',
     editorProps: {
       attributes: {
-        class: RICH_NOTE_EDITOR_CONTENT_CLASS,
+        class: cn(
+          RICH_NOTE_EDITOR_CONTENT_CLASS,
+          'dark:text-white prose-p:dark:text-white prose-li:dark:text-white prose-strong:dark:text-white prose-headings:dark:text-white',
+        ),
       },
     },
     onBlur: ({ editor }) => {
@@ -40,9 +44,9 @@ export function DailyNotePanel({ date, content, onChange }: DailyNotePanelProps)
   }, [content, date, editor]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 h-full flex flex-col transition-colors">
-      <div className="flex items-center gap-3 mb-2 text-slate-800 dark:text-slate-200">
-        <FileText className="w-5 h-5 text-indigo-500" />
+    <div className="bg-white dark:bg-tp-surface rounded-3xl shadow-sm border border-slate-200 dark:border-white/6 p-6 h-full flex flex-col transition-colors">
+      <div className="flex items-center gap-3 mb-2 text-slate-800 dark:text-white">
+        <FileText className="w-5 h-5 text-indigo-500 dark:text-tp-accent" />
         <h2 className="font-semibold">Notatka dnia</h2>
       </div>
       <RichNoteFormattingMenuBar editor={editor} />

@@ -158,8 +158,8 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-hidden transition-colors">
+        <div className="p-5 border-b border-slate-100 dark:border-white/6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Historia przychodów (ostatnie 12 miesięcy)</h2>
@@ -167,14 +167,14 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-xl p-1 border border-slate-200 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setAmountKind('gross')}
                   className={cn(
                     "px-3 py-1.5 text-xs font-bold rounded-lg transition-colors",
                     amountKind === 'gross'
-                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? "bg-white dark:bg-tp-surface text-indigo-600 dark:text-indigo-400 shadow-sm"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
@@ -186,7 +186,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                   className={cn(
                     "px-3 py-1.5 text-xs font-bold rounded-lg transition-colors",
                     amountKind === 'net'
-                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? "bg-white dark:bg-tp-surface text-indigo-600 dark:text-indigo-400 shadow-sm"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
@@ -194,11 +194,11 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                 </button>
               </div>
 
-              <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60">
                 <input type="checkbox" className="w-4 h-4" checked={showPredicted} onChange={() => setShowPredicted(v => !v)} />
                 <span className="text-slate-700 dark:text-slate-200">Przewidywane</span>
               </label>
-              <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+              <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60">
                 <input type="checkbox" className="w-4 h-4" checked={showRealized} onChange={() => setShowRealized(v => !v)} />
                 <span className="text-slate-700 dark:text-slate-200">Zrealizowane</span>
               </label>
@@ -225,8 +225,8 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-hidden transition-colors">
+        <div className="p-5 border-b border-slate-100 dark:border-white/6">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Miesiące (override sumy)</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Override nadpisuje serię „Przewidywane” dla miesiąca.</p>
         </div>
@@ -263,7 +263,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                   <button
                     type="button"
                     onClick={() => startEdit(r.monthKey)}
-                    className="self-start md:self-center inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-semibold"
+                    className="self-start md:self-center inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-tp-muted transition-colors text-xs font-semibold"
                   >
                     <Edit2 className="w-4 h-4" />
                     Edytuj override
@@ -280,7 +280,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                           value={editNet}
                           onChange={(e) => setEditNet(e.target.value)}
                           inputMode="decimal"
-                          className="w-36 text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          className="w-36 text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
@@ -291,7 +291,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                           value={editGross}
                           onChange={(e) => setEditGross(e.target.value)}
                           inputMode="decimal"
-                          className="w-36 text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                          className="w-36 text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
@@ -299,7 +299,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors text-xs font-semibold"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-tp-muted dark:hover:bg-tp-raised text-slate-700 dark:text-slate-200 transition-colors text-xs font-semibold"
                       >
                         <X className="w-4 h-4" />
                         Anuluj
@@ -324,8 +324,8 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
       {confirmMonth && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={() => setConfirmMonth(null)} />
-          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+          <div className="relative w-full max-w-lg bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-xl overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-white/6">
               <div className="text-lg font-bold text-slate-900 dark:text-white">Potwierdź zmianę</div>
               <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 Na pewno chcesz nadpisać sumy dla <span className="font-semibold text-slate-800 dark:text-slate-200">{getMonthTitle(confirmMonth)}</span>?
@@ -339,7 +339,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                 <button
                   type="button"
                   onClick={() => setConfirmMonth(null)}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition-colors"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-tp-muted dark:hover:bg-tp-raised text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition-colors"
                 >
                   Anuluj
                 </button>

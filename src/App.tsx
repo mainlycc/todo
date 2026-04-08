@@ -1,7 +1,26 @@
 import { addMonths, format, isBefore, startOfDay, startOfMonth, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Moon, Sun, List, ChevronRight, ChevronDown, X, GripVertical, Play, Clock, Archive, ChevronLeft } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Moon,
+  Sun,
+  List,
+  ChevronRight,
+  ChevronDown,
+  X,
+  GripVertical,
+  Play,
+  Clock,
+  Archive,
+  ChevronLeft,
+  UserSearch,
+  Sparkles,
+  Shirt,
+  Mail,
+  Laptop,
+  ShoppingBasket,
+} from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -41,6 +60,16 @@ import { Priority, Task, Payment, PaymentMonthOverride, ViewMode, TaskColor, Rec
 import { cn } from './utils';
 import { PaymentsHistoryView } from './components/PaymentsHistoryView';
 const QUEUE_DATE = '2099-12-31';
+
+/** Szybkie zadania na dziś — tylko ikona, pełny opis w atrybucie title. */
+const QUICK_TODAY_PRESETS: { title: string; Icon: LucideIcon; hint: string }[] = [
+  { title: 'Szukanie klientów', Icon: UserSearch, hint: 'Dodaj zadanie: szukanie klientów' },
+  { title: 'Sprzątanie', Icon: Sparkles, hint: 'Dodaj zadanie: sprzątanie' },
+  { title: 'Pranie', Icon: Shirt, hint: 'Dodaj zadanie: pranie' },
+  { title: 'Poczta i follow-up', Icon: Mail, hint: 'Dodaj zadanie: poczta i follow-up' },
+  { title: 'Skupiona praca', Icon: Laptop, hint: 'Dodaj zadanie: skupiona praca' },
+  { title: 'Zakupy', Icon: ShoppingBasket, hint: 'Dodaj zadanie: zakupy' },
+];
 
 function DroppableContainer({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) {
   const { setNodeRef } = useDroppable({ id });
@@ -154,7 +183,7 @@ const MinimalTaskItem: React.FC<{
     task.priority === 'low' ? 1 : task.priority === 'medium' ? 2 : 3;
   const litColorClass =
     priorityLevel === 1
-      ? 'bg-emerald-500 dark:bg-emerald-400'
+      ? 'bg-blue-500 dark:bg-tp-accent'
       : priorityLevel === 2
         ? 'bg-amber-500 dark:bg-amber-400'
         : 'bg-rose-500 dark:bg-rose-400';
@@ -190,7 +219,7 @@ const MinimalTaskItem: React.FC<{
   };
 
   return (
-    <div className={cn("py-2 border-b border-slate-100 dark:border-slate-800/50 last:border-0", isDragging && "opacity-50")}>
+    <div className={cn("py-2 border-b border-slate-100 dark:border-white/6/50 last:border-0", isDragging && "opacity-50")}>
       <div className="flex items-center gap-3">
         <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400">
           <GripVertical className="w-4 h-4" />
@@ -232,7 +261,7 @@ const MinimalTaskItem: React.FC<{
           </span>
         ) : task.category ? (
           <span
-            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60"
+            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
             title="Projekt"
           >
             {task.category}
@@ -244,7 +273,7 @@ const MinimalTaskItem: React.FC<{
             onClick={() => handleSetPriority('low')}
             className={cn(
               "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 1 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+              priorityLevel >= 1 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
             )}
             title="Priorytet: luz (1 kropka)"
           />
@@ -253,7 +282,7 @@ const MinimalTaskItem: React.FC<{
             onClick={() => handleSetPriority('medium')}
             className={cn(
               "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 2 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+              priorityLevel >= 2 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
             )}
             title="Priorytet: ważne (2 kropki)"
           />
@@ -262,7 +291,7 @@ const MinimalTaskItem: React.FC<{
             onClick={() => handleSetPriority('high')}
             className={cn(
               "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 3 ? litColorClass : "bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+              priorityLevel >= 3 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
             )}
             title="Priorytet: turbo pilne (3 kropki)"
           />
@@ -1749,7 +1778,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden transition-colors duration-300">
+    <div className="flex h-screen bg-slate-50 dark:bg-tp-canvas overflow-hidden transition-colors duration-300">
       {activeTimerTask && (
         <TaskTimer 
           task={activeTimerTask} 
@@ -1765,7 +1794,7 @@ export default function App() {
             Supabase nie jest skonfigurowany. Dane będą zapisywane tylko lokalnie.
           </div>
         )}
-        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex-shrink-0 transition-colors">
+        <header className="bg-white dark:bg-tp-canvas border-b border-slate-200 dark:border-white/6 flex-shrink-0 transition-colors">
           <div className="px-8 h-16 flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               {view === 'tasks' ? 'Zadania' : view === 'calendar' ? 'Kalendarz' : view === 'expected_payments' ? 'Przewidywana Wpłata' : view === 'payments_history' ? 'Historia wpłat' : view === 'rules' ? 'Zasady' : view === 'goals' ? 'Cele' : view === 'projects' ? 'Projekty' : 'Tryb Skupienia'}
@@ -1779,7 +1808,7 @@ export default function App() {
                     "p-2 rounded-xl transition-colors",
                     isMinimalView 
                       ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" 
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      : "bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-tp-raised"
                   )}
                   title={isMinimalView ? "Widok standardowy" : "Widok minimalistyczny"}
                 >
@@ -1787,7 +1816,7 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-tp-raised transition-colors"
                   title={isDarkMode ? "Przełącz na tryb jasny" : "Przełącz na tryb nocny"}
                 >
                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -1825,8 +1854,8 @@ export default function App() {
                       </span>
                     </div>
                     <div className="flex flex-col text-xs">
-                      <span className="text-emerald-600/80 dark:text-emerald-400/80 font-medium uppercase tracking-tighter">Zrealizowane ({realizedThisMonth.length}):</span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                      <span className="text-blue-600/80 dark:text-tp-accent/80 font-medium uppercase tracking-tighter">Zrealizowane ({realizedThisMonth.length}):</span>
+                      <span className="font-bold text-blue-700 dark:text-tp-accent">
                         {sumNetRealized.toFixed(2)} <span className="font-normal opacity-70">netto</span> / {sumGrossRealized.toFixed(2)} <span className="font-normal opacity-70">brutto</span>
                       </span>
                     </div>
@@ -1839,7 +1868,7 @@ export default function App() {
                     {format(new Date(), 'EEEE, d MMMM', { locale: pl })}
                   </div>
                   <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter mt-1">
-                    <span className="text-emerald-600 dark:text-emerald-400">{sumGrossRealized.toFixed(2)}</span>
+                    <span className="text-blue-600 dark:text-tp-accent">{sumGrossRealized.toFixed(2)}</span>
                     <span className="text-slate-400">/</span>
                     <span className="text-indigo-600 dark:text-indigo-400">{sumGrossTotal.toFixed(2)}</span>
                     <span className="text-slate-400 ml-0.5">brutto</span>
@@ -1867,11 +1896,36 @@ export default function App() {
                         >
                     {/* Today Section */}
                     <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Dzisiaj</h2>
+                      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 shrink-0">
+                            Dzisiaj
+                          </h2>
+                          <div
+                            className="flex items-center gap-0.5 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-tp-muted/60 p-0.5"
+                            role="group"
+                            aria-label="Szybkie zadania na dziś"
+                          >
+                            {QUICK_TODAY_PRESETS.map(({ title, Icon, hint }) => (
+                              <button
+                                key={title}
+                                type="button"
+                                title={hint}
+                                onClick={() => void handleAddTask(title, 'medium', '', 'indigo', false)}
+                                className={cn(
+                                  'p-2 rounded-lg text-slate-500 dark:text-slate-400',
+                                  'hover:text-tp-accent hover:bg-white dark:hover:bg-tp-raised',
+                                  'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/50',
+                                )}
+                              >
+                                <Icon className="w-4 h-4" aria-hidden />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         <button
                           onClick={handleMoveToQueue}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
                           title="Przenieś niezrobione do kolejki"
                         >
                           <Archive className="w-4 h-4" />
@@ -1884,7 +1938,7 @@ export default function App() {
                           strategy={verticalListSortingStrategy}
                         >
                           {isMinimalView ? (
-                            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-4 font-mono">
+                            <div className="bg-white dark:bg-tp-surface rounded-lg shadow-sm border border-slate-200 dark:border-white/6 p-4 font-mono">
                               {todayTasks.map(task => (
                                 <SortableMinimalTaskItem
                                   key={task.id}
@@ -1923,7 +1977,7 @@ export default function App() {
                                 />
                               ))}
                               {todayTasks.length === 0 && (
-                                <div className="text-center py-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-dashed">
+                                <div className="text-center py-8 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
                                   <p className="text-slate-500 dark:text-slate-400 font-medium">Brak zadań na ten dzień.</p>
                                 </div>
                               )}
@@ -1938,14 +1992,14 @@ export default function App() {
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Kolejka</h2>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
                             <button
                               type="button"
                               onClick={() => { setQueueSortMode('priority'); localStorage.setItem('queueSortMode', 'priority'); }}
                               className={cn(
                                 "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
                                 queueSortMode === 'priority'
-                                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  ? "bg-white dark:bg-tp-raised text-indigo-600 dark:text-tp-accent shadow-sm"
                                   : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                               )}
                               title="Sortuj kolejkę według ważności"
@@ -1958,7 +2012,7 @@ export default function App() {
                               className={cn(
                                 "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
                                 queueSortMode === 'manual'
-                                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                  ? "bg-white dark:bg-tp-raised text-indigo-600 dark:text-tp-accent shadow-sm"
                                   : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                               )}
                               title="Sortuj kolejkę ręcznie (przeciąganie)"
@@ -1982,7 +2036,7 @@ export default function App() {
                           strategy={verticalListSortingStrategy}
                         >
                           {isMinimalView ? (
-                            <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 p-4 font-mono">
+                            <div className="bg-white dark:bg-tp-surface rounded-lg shadow-sm border border-slate-200 dark:border-white/6 p-4 font-mono">
                               {queueTasks.map(task => (
                                 <SortableMinimalTaskItem
                                   key={task.id}
@@ -2021,7 +2075,7 @@ export default function App() {
                                 />
                               ))}
                               {queueTasks.length === 0 && (
-                                <div className="text-center py-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-dashed">
+                                <div className="text-center py-8 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
                                   <p className="text-slate-500 dark:text-slate-400 font-medium">Brak zadań w kolejce.</p>
                                 </div>
                               )}
@@ -2099,7 +2153,7 @@ export default function App() {
           <PaymentForm onAdd={handleAddPayment} projects={projects} />
           <div className="space-y-3 mt-6">
             {sortedPayments.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-dashed">
+              <div className="text-center py-12 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
                 <p className="text-slate-500 dark:text-slate-400 font-medium">Brak przewidywanych wpłat w tym miesiącu.</p>
               </div>
             ) : (

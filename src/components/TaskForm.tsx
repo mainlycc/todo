@@ -82,10 +82,10 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-visible mb-6 relative z-10 transition-colors">
+    <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-visible mb-6 relative z-10 transition-colors">
       <form onSubmit={handleSubmit} className="p-4">
         <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-700 flex-shrink-0" />
+          <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-white/10 flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -100,7 +100,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="p-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-tp-muted"
               title="Dodaj emotikon"
             >
               <Smile className="w-5 h-5" />
@@ -121,13 +121,13 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                 className="fixed inset-0 z-20" 
                 onClick={() => setShowEmojiPicker(false)}
               />
-              <div className="absolute right-4 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-2xl p-3 z-30 w-64 grid grid-cols-6 gap-2">
+              <div className="absolute right-4 top-12 bg-white dark:bg-tp-muted border border-slate-200 dark:border-white/10 shadow-xl rounded-2xl p-3 z-30 w-64 grid grid-cols-6 gap-2">
                 {COMMON_EMOJIS.map(emoji => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => handleEmojiClick(emoji)}
-                    className="text-xl hover:bg-slate-100 dark:hover:bg-slate-700 p-1.5 rounded-lg transition-colors flex items-center justify-center"
+                    className="text-xl hover:bg-slate-100 dark:hover:bg-tp-raised p-1.5 rounded-lg transition-colors flex items-center justify-center"
                   >
                     {emoji}
                   </button>
@@ -138,7 +138,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
         </div>
 
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all">
             <div className="min-w-0">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
                 Termin
@@ -149,13 +149,13 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   disabled={isRecurring}
-                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white disabled:opacity-50"
+                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={handleSetToday}
                   disabled={isRecurring}
-                  className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 font-medium bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                  className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 font-medium bg-white dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-tp-raised transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   Dzisiaj
                 </button>
@@ -169,7 +169,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as Priority)}
-                className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
               >
                 <option value="low">Niski</option>
                 <option value="medium">Średni</option>
@@ -193,7 +193,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                     }
                     setCategory(val);
                   }}
-                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
                 >
                   <option value="">— wybierz —</option>
                   {projects
@@ -212,7 +212,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                     value={newProjectTitle}
                     onChange={(e) => setNewProjectTitle(e.target.value)}
                     placeholder="Nazwa nowego projektu…"
-                    className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
                   />
                   <button
                     type="button"
@@ -230,14 +230,14 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                         setIsCreatingProject(false);
                       }
                     }}
-                    className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 font-semibold bg-white dark:bg-tp-muted text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-tp-raised transition-colors disabled:opacity-50 whitespace-nowrap"
                   >
                     Dodaj
                   </button>
                   <button
                     type="button"
                     onClick={() => setProjectMode('select')}
-                    className="text-xs px-3 py-2 rounded-xl border border-transparent font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap"
+                    className="text-xs px-3 py-2 rounded-xl border border-transparent font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-tp-muted transition-colors whitespace-nowrap"
                   >
                     Anuluj
                   </button>
@@ -255,12 +255,12 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                   onClick={() => setSelectedColor('auto')}
                   className={cn(
                     "text-xs px-2 py-1 rounded-lg border font-medium transition-colors",
-                    selectedColor === 'auto' ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200" : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    selectedColor === 'auto' ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 border-slate-800 dark:border-slate-200" : "bg-white dark:bg-tp-muted text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-tp-raised"
                   )}
                 >
                   Auto
                 </button>
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+                <div className="w-px h-4 bg-slate-200 dark:bg-tp-raised mx-1" />
                 {TASK_COLORS.map(c => (
                   <button
                     key={c}
@@ -274,7 +274,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                     title={c}
                   />
                 ))}
-                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+                <div className="w-px h-4 bg-slate-200 dark:bg-tp-raised mx-1" />
                 <div className="relative flex items-center">
                   <input
                     type="color"
@@ -290,7 +290,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
               </div>
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-4 mt-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="sm:col-span-2 lg:col-span-4 mt-2 pt-4 border-t border-slate-100 dark:border-white/6">
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer w-fit hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                 <input
                   type="checkbox"
@@ -299,7 +299,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
                     setIsRecurring(e.target.checked);
                     if (e.target.checked) setDueDate('');
                   }}
-                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-transparent"
+                  className="w-4 h-4 rounded border-slate-300 dark:border-white/10 text-indigo-600 focus:ring-indigo-500 cursor-pointer bg-transparent"
                 />
                 <span className="font-medium">Codzienne zadanie</span>
                 <span className="text-slate-400 dark:text-slate-500 text-xs">(pojawia się każdego dnia, termin automatycznie ustawiany na "dzisiaj")</span>

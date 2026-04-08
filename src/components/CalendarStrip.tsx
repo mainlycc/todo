@@ -11,7 +11,7 @@ export function CalendarStrip({ selectedDate, onSelectDate }: CalendarStripProps
   const days = Array.from({ length: 7 }).map((_, i) => subDays(selectedDate, 3 - i));
 
   return (
-    <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto gap-2 transition-colors">
+    <div className="flex justify-between items-center bg-white dark:bg-tp-surface p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-white/6 overflow-x-auto gap-2 transition-colors">
       {days.map((day) => {
         const isSelected = isSameDay(day, selectedDate);
         const isToday = isSameDay(day, new Date());
@@ -23,7 +23,7 @@ export function CalendarStrip({ selectedDate, onSelectDate }: CalendarStripProps
               "flex flex-col items-center justify-center min-w-[3.5rem] h-16 rounded-xl transition-all",
               isSelected
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
-                : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400",
+                : "hover:bg-slate-100 dark:hover:bg-tp-muted text-slate-600 dark:text-slate-400",
               isToday && !isSelected && "text-indigo-600 dark:text-indigo-400 font-semibold"
             )}
           >

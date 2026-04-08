@@ -32,12 +32,12 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
 
   return (
     <aside className={cn(
-      "bg-slate-900 dark:bg-black text-slate-300 flex flex-col h-full flex-shrink-0 transition-all duration-300 relative",
+      "bg-slate-900 dark:bg-tp-sidebar text-slate-300 dark:text-neutral-400 flex flex-col h-full flex-shrink-0 transition-all duration-300 relative",
       isCollapsed ? "w-20" : "w-64"
     )}>
       <div className={cn("p-6 flex items-center h-20", isCollapsed ? "justify-center" : "justify-start")}>
         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-          <CheckSquare className="w-6 h-6 text-indigo-400 flex-shrink-0" />
+          <CheckSquare className="w-6 h-6 text-tp-accent flex-shrink-0" />
           <h2 className={cn(
             "text-xl font-bold text-white transition-opacity duration-300",
             isCollapsed ? "opacity-0 w-0" : "opacity-100"
@@ -60,8 +60,8 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 "w-full flex items-center rounded-xl transition-all duration-300 text-sm font-medium overflow-hidden whitespace-nowrap",
                 isCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3",
                 isActive 
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20" 
-                  : "hover:bg-slate-800 dark:hover:bg-slate-900 hover:text-white"
+                  ? "bg-white/[0.08] text-white border border-white/[0.06]" 
+                  : "text-neutral-400 hover:bg-white/[0.05] hover:text-white"
               )}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -76,11 +76,11 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800 dark:border-slate-900">
+      <div className="p-4 border-t border-slate-800 dark:border-white/6">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "flex items-center text-slate-400 hover:text-white transition-all duration-300 w-full rounded-xl hover:bg-slate-800 dark:hover:bg-slate-900 overflow-hidden whitespace-nowrap",
+            "flex items-center text-slate-400 hover:text-white transition-all duration-300 w-full rounded-xl hover:bg-slate-800 dark:hover:bg-tp-muted overflow-hidden whitespace-nowrap",
             isCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3"
           )}
           title={isCollapsed ? "Rozwiń menu" : "Zwiń menu"}

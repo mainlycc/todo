@@ -38,7 +38,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
+    <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-hidden transition-colors">
       <form onSubmit={handleSubmit} className="p-4 space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-grow">
@@ -50,7 +50,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="np. Faktura FV/03/2026"
-              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
               required
             />
           </div>
@@ -62,7 +62,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
               required
             />
           </div>
@@ -73,7 +73,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
             >
               <option value="">— brak —</option>
               {projects
@@ -98,7 +98,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
               value={netAmount}
               onChange={handleNetChange}
               placeholder="0.00"
-              className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+              className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
               required
             />
           </div>
@@ -113,7 +113,7 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
                 value={grossAmount}
                 onChange={(e) => setGrossAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white"
                 required
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" title="Obliczono automatycznie (23% VAT)">

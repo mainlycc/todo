@@ -64,11 +64,11 @@ export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null })
   };
 
   return (
-    <div className="flex items-center gap-1 mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+    <div className="flex items-center gap-1 mb-3 pb-3 border-b border-slate-100 dark:border-white/6">
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBold().run()}
-        className={`p-1.5 rounded-md transition-colors ${editor.isActive('bold') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1.5 rounded-md transition-colors ${editor.isActive('bold') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Pogrubienie"
       >
         <Bold className="w-4 h-4" />
@@ -76,7 +76,7 @@ export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null })
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleLargeText().run()}
-        className={`p-1.5 rounded-md transition-colors ${editor.isActive('largeText') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1.5 rounded-md transition-colors ${editor.isActive('largeText') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Większy tekst (tylko zaznaczenie)"
       >
         <Heading2 className="w-4 h-4" />
@@ -84,7 +84,7 @@ export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null })
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
-        className={`p-1.5 rounded-md transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1.5 rounded-md transition-colors ${editor.isActive('bulletList') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Lista punktowana"
       >
         <List className="w-4 h-4" />
@@ -92,16 +92,16 @@ export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null })
       <button
         type="button"
         onClick={() => editor.chain().focus().toggleHighlight().run()}
-        className={`p-1.5 rounded-md transition-colors ${editor.isActive('highlight') ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        className={`p-1.5 rounded-md transition-colors ${editor.isActive('highlight') ? 'bg-slate-200 dark:bg-tp-raised text-slate-900 dark:text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted'}`}
         title="Wyróżnienie"
       >
         <Highlighter className="w-4 h-4" />
       </button>
-      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+      <div className="w-px h-4 bg-slate-200 dark:bg-tp-raised mx-1" />
       <button
         type="button"
         onClick={insertTime}
-        className="p-1.5 rounded-md transition-colors text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+        className="p-1.5 rounded-md transition-colors text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted"
         title="Wstaw aktualną godzinę"
       >
         <Clock className="w-4 h-4" />

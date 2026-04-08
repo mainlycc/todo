@@ -41,17 +41,17 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({ task, onStop, onClose }) =
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-6 right-6 z-50 w-64 bg-white dark:bg-tp-surface rounded-2xl shadow-2xl border border-slate-200 dark:border-white/6 p-4 animate-in slide-in-from-bottom-4 duration-300">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
           <Clock className="w-4 h-4" />
           <span className="text-[10px] font-bold uppercase tracking-wider">Timer Zadania</span>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => setIsMinimized(true)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400">
+          <button onClick={() => setIsMinimized(true)} className="p-1 hover:bg-slate-100 dark:hover:bg-tp-muted rounded text-slate-400">
             <Minus className="w-4 h-4" />
           </button>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400">
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-tp-muted rounded text-slate-400">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -77,7 +77,7 @@ export const TaskTimer: React.FC<TaskTimerProps> = ({ task, onStop, onClose }) =
         </button>
         <button 
           onClick={() => onStop(seconds)}
-          className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+          className="px-4 py-2 bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 rounded-xl transition-colors"
           title="Zatrzymaj i zapisz"
         >
           <Square className="w-4 h-4 fill-current" />

@@ -6,6 +6,13 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Ciemny motyw „true black” (np. dashboard typu Taskplus) */
+  --color-tp-canvas: #0d0d0d;
+  --color-tp-sidebar: #161616;
+  --color-tp-surface: #1e1e1e;
+  --color-tp-muted: #252525;
+  --color-tp-raised: #2a2a2a;
+  --color-tp-accent: #4a6cf7;
 }
 
 body {
@@ -15,8 +22,8 @@ body {
 }
 
 .dark body {
-  background-color: #020617;
-  color: #f8fafc;
+  background-color: var(--color-tp-canvas);
+  color: #fafafa;
 }
 
 .tiptap p.is-editor-empty:first-child::before {

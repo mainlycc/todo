@@ -15,10 +15,10 @@ export const isPredefinedColor = (color: string): color is PredefinedColor => {
 
 export const colorStyles: Record<PredefinedColor, { high: string, medium: string, low: string, badge: string, picker: string }> = {
   slate: {
-    high: 'bg-slate-300 dark:bg-slate-700 border-slate-600 dark:border-slate-500',
-    medium: 'bg-slate-200 dark:bg-slate-800 border-slate-500 dark:border-slate-600',
-    low: 'bg-slate-100 dark:bg-slate-900 border-slate-400 dark:border-slate-700',
-    badge: 'bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700',
+    high: 'bg-slate-300 dark:bg-tp-raised border-slate-600 dark:border-white/20',
+    medium: 'bg-slate-200 dark:bg-tp-muted border-slate-500 dark:border-white/15',
+    low: 'bg-slate-100 dark:bg-tp-surface border-slate-400 dark:border-white/10',
+    badge: 'bg-slate-200 dark:bg-tp-muted text-slate-800 dark:text-slate-200 border-slate-300 dark:border-white/10',
     picker: 'bg-slate-500',
   },
   blue: {

@@ -105,11 +105,11 @@ export function TaskItem({
 
   if (isEditing) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-indigo-300 dark:border-indigo-800 shadow-sm p-4">
+      <div className="bg-white dark:bg-tp-surface rounded-2xl border border-indigo-300 dark:border-indigo-800 shadow-sm p-4">
         <input 
           value={editTitle} 
           onChange={e => setEditTitle(e.target.value)} 
-          className="w-full text-base font-medium bg-transparent border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none pb-1 mb-3"
+          className="w-full text-base font-medium bg-transparent border-b border-slate-200 dark:border-white/6 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none pb-1 mb-3"
           autoFocus
         />
         <div className="flex flex-wrap gap-3 mb-3 items-center">
@@ -117,12 +117,12 @@ export function TaskItem({
             type="date"
             value={editDueDate} 
             onChange={e => setEditDueDate(e.target.value)} 
-            className="text-sm rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+            className="text-sm rounded-lg border border-slate-200 dark:border-white/10 px-2 py-1 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-slate-100"
           />
           <select 
             value={editPriority} 
             onChange={e => setEditPriority(e.target.value as Priority)} 
-            className="text-sm rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+            className="text-sm rounded-lg border border-slate-200 dark:border-white/10 px-2 py-1 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-slate-100"
           >
             <option value="low">Niski</option>
             <option value="medium">Średni</option>
@@ -132,7 +132,7 @@ export function TaskItem({
             value={editCategory} 
             onChange={e => setEditCategory(e.target.value)} 
             placeholder="Kategoria"
-            className="text-sm rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1 w-32 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+            className="text-sm rounded-lg border border-slate-200 dark:border-white/10 px-2 py-1 w-32 focus:outline-none focus:border-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-slate-100"
           />
           <div className="flex items-center gap-1 ml-2">
             {TASK_COLORS.map(c => (
@@ -142,7 +142,7 @@ export function TaskItem({
                 className={cn("w-5 h-5 rounded-full transition-transform", colorStyles[c].picker, editColor === c ? "ring-2 ring-offset-1 ring-slate-400 dark:ring-slate-600 scale-110" : "hover:scale-110")}
               />
             ))}
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1" />
+            <div className="w-px h-4 bg-slate-200 dark:bg-tp-raised mx-1" />
             <input
               type="color"
               value={isPredefinedColor(editColor) ? '#6366f1' : editColor}
@@ -155,10 +155,10 @@ export function TaskItem({
           value={editNotes}
           onChange={e => setEditNotes(e.target.value)}
           placeholder="Dodaj notatkę..."
-          className="w-full text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 text-slate-900 dark:text-slate-100 mb-4 min-h-[80px] resize-none"
+          className="w-full text-sm bg-slate-50 dark:bg-tp-muted border border-slate-200 dark:border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 text-slate-900 dark:text-slate-100 mb-4 min-h-[80px] resize-none"
         />
         <div className="flex justify-end gap-2">
-          <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">Anuluj</button>
+          <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-lg transition-colors">Anuluj</button>
           <button onClick={handleSaveEdit} className="px-3 py-1.5 text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors">Zapisz</button>
         </div>
       </div>
@@ -176,7 +176,7 @@ export function TaskItem({
       className={cn(
         "rounded-2xl border transition-all duration-200 overflow-visible",
         bgClass,
-        task.completed ? "dark:bg-slate-900/50 dark:border-slate-800 dark:opacity-60" : "shadow-sm hover:shadow-md dark:shadow-none dark:border-opacity-40",
+        task.completed ? "dark:bg-tp-surface/50 dark:border-white/6 dark:opacity-60" : "shadow-sm hover:shadow-md dark:shadow-none dark:border-opacity-40",
         isDragging && "opacity-90 scale-[1.02] shadow-xl z-50 ring-2 ring-indigo-500"
       )}
       style={inlineStyle}
@@ -216,7 +216,7 @@ export function TaskItem({
             {task.due_date && (
               <span className={cn(
                 "text-xs px-2 py-0.5 rounded-full border font-medium flex items-center gap-1",
-                task.completed ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700" : 
+                task.completed ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10" : 
                 (isBefore(parseISO(task.due_date), startOfDay(new Date())) ? "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10")
               )}>
                 <Calendar className="w-3 h-3" />
@@ -225,7 +225,7 @@ export function TaskItem({
             )}
             <span className={cn(
               "text-xs px-2 py-0.5 rounded-full border font-medium",
-              task.completed ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700" : (isPredefinedColor(task.color || 'slate') ? colorStyles[task.color as PredefinedColor || 'slate'].badge : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10")
+              task.completed ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10" : (isPredefinedColor(task.color || 'slate') ? colorStyles[task.color as PredefinedColor || 'slate'].badge : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10")
             )}
             style={!task.completed && !isPredefinedColor(task.color || 'slate') ? { borderColor: task.color, backgroundColor: `${task.color}20`, color: task.color } : {}}>
               {priorityLabels[task.priority]}
@@ -235,7 +235,7 @@ export function TaskItem({
                 className={cn(
                   "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1",
                   task.completed
-                    ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700"
+                    ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
                     : "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
                 )}
                 style={
@@ -256,7 +256,7 @@ export function TaskItem({
             {!task.project_title && task.category && (
               <span className={cn(
                 "text-xs px-2 py-0.5 rounded-full border font-medium",
-                task.completed ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500 border-slate-200 dark:border-slate-700" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"
+                task.completed ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"
               )}>
                 {task.category}
               </span>
@@ -310,7 +310,7 @@ export function TaskItem({
             onClick={() => onFocus(task.id)}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors mr-1",
-              task.completed ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-500" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-black/40"
+              task.completed ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 hover:bg-white/80 dark:hover:bg-black/40"
             )}
           >
             <Play className="w-3.5 h-3.5" />
@@ -320,7 +320,7 @@ export function TaskItem({
             onClick={() => setIsExpanded(!isExpanded)}
             className={cn(
               "p-2 rounded-lg transition-colors",
-              task.completed ? "text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800" : "text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
+              task.completed ? "text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-tp-muted" : "text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
             )}
             title="Podzadania"
           >
@@ -332,7 +332,7 @@ export function TaskItem({
               onClick={() => setShowMenu(!showMenu)}
               className={cn(
                 "p-2 rounded-lg transition-colors",
-                task.completed ? "text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800" : "text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
+                task.completed ? "text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-tp-muted" : "text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
               )}
               title="Opcje"
             >
@@ -340,10 +340,10 @@ export function TaskItem({
             </button>
             
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg rounded-xl z-20 py-1 overflow-hidden">
+              <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-tp-muted border border-slate-200 dark:border-white/10 shadow-lg rounded-xl z-20 py-1 overflow-hidden">
                 <button 
                   onClick={() => { setIsEditing(true); setShowMenu(false); }} 
-                  className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-tp-raised flex items-center gap-2"
                 >
                   <Edit2 className="w-4 h-4" /> Edytuj
                 </button>
@@ -356,7 +356,7 @@ export function TaskItem({
                 {task.is_recurring && task.recurring_template_id && onDeleteSeries && (
                   <button 
                     onClick={() => { onDeleteSeries(task.recurring_template_id!); setShowMenu(false); }} 
-                    className="w-full text-left px-4 py-2 text-sm text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 flex items-center gap-2 border-t border-slate-100 dark:border-slate-700"
+                    className="w-full text-left px-4 py-2 text-sm text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-900/30 flex items-center gap-2 border-t border-slate-100 dark:border-white/10"
                   >
                     <Trash2 className="w-4 h-4" /> Usuń codzienny cykl
                   </button>
@@ -370,7 +370,7 @@ export function TaskItem({
       {isExpanded && (
         <div className={cn(
           "border-t p-4 pt-3",
-          task.completed ? "bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800" : "bg-white/40 dark:bg-black/10 border-black/5 dark:border-white/5"
+          task.completed ? "bg-slate-50 dark:bg-tp-surface/30 border-slate-200 dark:border-white/6" : "bg-white/40 dark:bg-black/10 border-black/5 dark:border-white/5"
         )}>
           <div className="space-y-2 mb-3">
             {task.subtasks.map(subtask => (

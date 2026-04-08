@@ -16,10 +16,10 @@ interface PaymentItemProps {
 export function PaymentItem({ payment, projectTitle, projectColor, onToggleRealized, onDelete }: PaymentItemProps) {
   return (
     <div className={cn(
-      "bg-white dark:bg-slate-900 rounded-2xl border p-4 flex items-center gap-4 transition-all",
+      "bg-white dark:bg-tp-surface rounded-2xl border p-4 flex items-center gap-4 transition-all",
       payment.is_realized 
         ? "border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/50 dark:bg-emerald-900/10 opacity-75" 
-        : "border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md dark:shadow-none"
+        : "border-slate-200 dark:border-white/6 shadow-sm hover:shadow-md dark:shadow-none"
     )}>
       <button
         onClick={() => onToggleRealized(payment.id)}

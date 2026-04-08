@@ -131,20 +131,20 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
   return (
     <div className="flex flex-col gap-6 pb-8">
       {/* Month grid (full width) */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm transition-colors">
+      <div className="bg-white dark:bg-tp-surface rounded-3xl border border-slate-200 dark:border-white/6 p-6 shadow-sm transition-colors">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white capitalize">
               {format(currentMonth, 'MMMM yyyy', { locale: pl })}
             </h2>
             <div className="flex flex-wrap items-center gap-2 mt-3">
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-xl p-1 border border-slate-200 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setShowPlanned(v => !v)}
                   className={cn(
                     "px-3 py-1 text-xs font-bold rounded-lg transition-colors",
-                    showPlanned ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    showPlanned ? "bg-white dark:bg-tp-surface text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   )}
                   title="Pokaż/ukryj zaplanowane wydarzenia"
                 >
@@ -155,7 +155,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                   onClick={() => setShowDone(v => !v)}
                   className={cn(
                     "px-3 py-1 text-xs font-bold rounded-lg transition-colors",
-                    showDone ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    showDone ? "bg-white dark:bg-tp-surface text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   )}
                   title="Pokaż/ukryj ukończone zadania"
                 >
@@ -166,7 +166,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                   onClick={() => setShowNotes(v => !v)}
                   className={cn(
                     "px-3 py-1 text-xs font-bold rounded-lg transition-colors",
-                    showNotes ? "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    showNotes ? "bg-white dark:bg-tp-surface text-slate-700 dark:text-slate-200 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   )}
                   title="Pokaż/ukryj notatki dnia"
                 >
@@ -177,10 +177,10 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
           </div>
 
           <div className="flex gap-2 flex-shrink-0">
-            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-600 dark:text-slate-400">
+            <button onClick={prevMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors text-slate-600 dark:text-slate-400">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-600 dark:text-slate-400">
+            <button onClick={nextMonth} className="p-2 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors text-slate-600 dark:text-slate-400">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -218,7 +218,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                 className={cn(
                   "h-20 sm:h-24 lg:h-28 flex flex-col items-center justify-center rounded-2xl text-sm transition-all relative border",
                   !isCurrentMonth && "text-slate-300 dark:text-slate-700 border-transparent",
-                  isCurrentMonth && !isSelected && "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-100 dark:border-slate-800",
+                  isCurrentMonth && !isSelected && "hover:bg-slate-50 dark:hover:bg-tp-muted text-slate-700 dark:text-slate-300 border-slate-100 dark:border-white/6",
                   isSelected && "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none font-bold border-indigo-600"
                 )}
               >
@@ -241,9 +241,9 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
       </div>
 
       {/* Day details (full width, tabbed) */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors overflow-visible">
+      <div className="bg-white dark:bg-tp-surface rounded-3xl border border-slate-200 dark:border-white/6 shadow-sm transition-colors overflow-visible">
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-900 dark:to-slate-900">
+        <div className="p-6 border-b border-slate-100 dark:border-white/6 bg-gradient-to-b from-slate-50/80 to-white dark:from-tp-surface dark:to-tp-surface">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                   Dzień
                 </span>
                 {selectedDate ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-black/10 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/6 bg-white/80 dark:bg-black/10 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider">
                     {format(selectedDate, 'EEE', { locale: pl })}
                   </span>
                 ) : null}
@@ -266,7 +266,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
 
             <div className="flex items-center gap-2 flex-wrap">
               {/* Tabs */}
-              <div className="flex items-center bg-white dark:bg-slate-900 rounded-2xl p-1 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="flex items-center bg-white dark:bg-tp-surface rounded-2xl p-1 border border-slate-200 dark:border-white/6 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setDayTab('planned')}
@@ -275,7 +275,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                     "px-3 py-1.5 text-xs font-bold rounded-xl transition-all",
                     dayTab === 'planned'
                       ? "bg-indigo-600 text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800",
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-tp-muted",
                     !showPlanned && "opacity-40 cursor-not-allowed"
                   )}
                 >
@@ -289,7 +289,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                     "px-3 py-1.5 text-xs font-bold rounded-xl transition-all",
                     dayTab === 'done'
                       ? "bg-emerald-600 text-white shadow-[0_8px_24px_rgba(16,185,129,0.25)]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800",
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-tp-muted",
                     !showDone && "opacity-40 cursor-not-allowed"
                   )}
                 >
@@ -303,7 +303,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                     "px-3 py-1.5 text-xs font-bold rounded-xl transition-all",
                     dayTab === 'notes'
                       ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800",
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-tp-muted",
                     !showNotes && "opacity-40 cursor-not-allowed"
                   )}
                 >
@@ -322,7 +322,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                     !selectedDateStr ? "opacity-50 cursor-not-allowed" : "hover:translate-y-[-1px] hover:shadow-md",
                     isAddingEvent
                       ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      : "bg-white dark:bg-tp-surface text-slate-900 dark:text-white border-slate-200 dark:border-white/6 hover:bg-slate-50 dark:hover:bg-tp-muted"
                   )}
                   title="Dodaj wydarzenie"
                 >
@@ -336,7 +336,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
 
         {/* Content */}
         <div className="p-6">
-          <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/20 p-4 sm:p-5">
+          <div className="rounded-3xl border border-slate-100 dark:border-white/6 bg-slate-50/70 dark:bg-tp-canvas/20 p-4 sm:p-5">
 
         {dayTab === 'planned' && (
           <div className="space-y-4">
@@ -349,7 +349,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                       type="time"
                       value={newEventTime}
                       onChange={(e) => setNewEventTime(e.target.value)}
-                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
@@ -360,7 +360,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                       step={5}
                       value={String(newEventDuration)}
                       onChange={(e) => setNewEventDuration(parseInt(e.target.value || '0', 10))}
-                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -373,7 +373,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                       value={newEventTitle}
                       onChange={(e) => setNewEventTitle(e.target.value)}
                       placeholder="np. Spotkanie / Call / Deadline…"
-                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
                     />
                   </div>
                   <div>
@@ -381,7 +381,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                     <select
                       value={newEventProjectId}
                       onChange={(e) => setNewEventProjectId(e.target.value)}
-                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-slate-700 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full text-sm rounded-2xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
                     >
                       <option value="">— brak —</option>
                       {projects.filter(p => !p.completed).map(p => (
@@ -397,7 +397,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                   <button
                     type="button"
                     onClick={() => { setIsAddingEvent(false); setNewEventTitle(''); }}
-                    className="px-4 py-2 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-slate-900/40 transition-colors"
+                    className="px-4 py-2 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-tp-muted/40 transition-colors"
                   >
                     Anuluj
                   </button>
@@ -417,12 +417,12 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
               {!selectedDateStr ? (
                 <p className="text-slate-500 dark:text-slate-400 text-sm text-center py-6">Wybierz dzień z kalendarza.</p>
               ) : selectedEvents.length === 0 ? (
-                <div className="text-center py-10 bg-white/60 dark:bg-black/10 rounded-3xl border border-slate-200/70 dark:border-slate-800 border-dashed">
+                <div className="text-center py-10 bg-white/60 dark:bg-black/10 rounded-3xl border border-slate-200/70 dark:border-white/6 border-dashed">
                   <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Brak wydarzeń w tym dniu.</p>
                 </div>
               ) : (
                 selectedEvents.map(ev => (
-                  <div key={ev.id} className="p-4 rounded-3xl bg-white/70 dark:bg-black/10 border border-slate-200/70 dark:border-slate-800 shadow-sm">
+                  <div key={ev.id} className="p-4 rounded-3xl bg-white/70 dark:bg-black/10 border border-slate-200/70 dark:border-white/6 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-2">
                       <div className="flex items-start gap-2 flex-1 min-w-0">
                         <input
@@ -432,7 +432,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                             const next = selectedEvents.map(x => x.id === ev.id ? { ...x, time: e.target.value } : x).sort(sortTimeAsc);
                             upsertEventsForSelected(next);
                           }}
-                          className="text-xs font-mono rounded-2xl border border-slate-200 dark:border-slate-700 px-2 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white w-[96px]"
+                          className="text-xs font-mono rounded-2xl border border-slate-200 dark:border-white/10 px-2 py-2 bg-white dark:bg-tp-surface text-slate-900 dark:text-white w-[96px]"
                           title="Godzina"
                         />
                         <input
@@ -442,7 +442,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                             const next = selectedEvents.map(x => x.id === ev.id ? { ...x, title: e.target.value } : x);
                             upsertEventsForSelected(next);
                           }}
-                          className="flex-1 min-w-0 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-slate-700 px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                          className="flex-1 min-w-0 text-sm font-semibold rounded-2xl border border-slate-200 dark:border-white/10 px-3 py-2 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
                           title="Tytuł"
                         />
                         <button
@@ -470,7 +470,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                             const next = selectedEvents.map(x => x.id === ev.id ? { ...x, duration: Number.isFinite(v) ? Math.max(0, v) : undefined } : x);
                             upsertEventsForSelected(next);
                           }}
-                          className="w-[104px] text-xs rounded-2xl border border-slate-200 dark:border-slate-700 px-2 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                          className="w-[104px] text-xs rounded-2xl border border-slate-200 dark:border-white/10 px-2 py-2 bg-white dark:bg-tp-surface text-slate-700 dark:text-slate-200"
                           title="Czas trwania (minuty)"
                         />
                       </div>
@@ -483,7 +483,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                           const next = selectedEvents.map(x => x.id === ev.id ? { ...x, project_id: e.target.value || null } : x);
                           upsertEventsForSelected(next);
                         }}
-                        className="text-xs rounded-2xl border border-slate-200 dark:border-slate-700 px-2 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+                        className="text-xs rounded-2xl border border-slate-200 dark:border-white/10 px-2 py-2 bg-white dark:bg-tp-surface text-slate-700 dark:text-slate-200"
                         title="Projekt"
                       >
                         <option value="">— brak projektu —</option>
@@ -510,7 +510,7 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
               <p className="text-slate-500 dark:text-slate-400 text-sm text-center py-8">Brak ukończonych zadań w tym dniu.</p>
             ) : (
               completedTasksForSelected.map(task => (
-                <div key={task.id} className="p-4 rounded-3xl bg-white/70 dark:bg-black/10 border border-slate-200/70 dark:border-slate-800 flex items-center gap-3 shadow-sm">
+                <div key={task.id} className="p-4 rounded-3xl bg-white/70 dark:bg-black/10 border border-slate-200/70 dark:border-white/6 flex items-center gap-3 shadow-sm">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 line-through">{task.title}</span>
                   {task.pomodoros_completed ? (

@@ -157,29 +157,29 @@ export function GoalsView() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 flex-1 overflow-hidden">
         {/* Zasady Celów */}
         <div className="xl:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
               <Info className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider text-xs">Zasady dobrych celów (SMART)</h3>
             </div>
             <div className="space-y-4 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-tp-muted/50 rounded-xl border border-slate-100 dark:border-white/6">
                 <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">S - Konkretny (Specific)</p>
                 <p>Cel powinien być jasny i precyzyjny. Zamiast "chcę być fit", wybierz "chcę przebiec 5km".</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-tp-muted/50 rounded-xl border border-slate-100 dark:border-white/6">
                 <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">M - Mierzalny (Measurable)</p>
                 <p>Musisz wiedzieć, kiedy cel zostanie osiągnięty. Dodaj liczby lub konkretne wskaźniki.</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-tp-muted/50 rounded-xl border border-slate-100 dark:border-white/6">
                 <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">A - Atrakcyjny (Achievable)</p>
                 <p>Cel powinien być ambitny, ale możliwy do zrealizowania przy Twoich zasobach.</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-tp-muted/50 rounded-xl border border-slate-100 dark:border-white/6">
                 <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">R - Istotny (Relevant)</p>
                 <p>Cel musi być dla Ciebie ważny i zgodny z Twoimi wartościami.</p>
               </div>
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              <div className="p-3 bg-slate-50 dark:bg-tp-muted/50 rounded-xl border border-slate-100 dark:border-white/6">
                 <p className="font-bold text-slate-800 dark:text-slate-200 mb-1">T - Określony w czasie (Time-bound)</p>
                 <p>Wyznacz konkretny termin realizacji. To motywuje do działania.</p>
               </div>
@@ -190,7 +190,7 @@ export function GoalsView() {
         {/* Lista Celów */}
         <div className="xl:col-span-2 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar pb-8">
           {isAddingGoal && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200">
+            <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200">
               <input
                 type="text"
                 value={newGoalTitle}
@@ -201,7 +201,7 @@ export function GoalsView() {
                 onKeyDown={(e) => e.key === 'Enter' && handleAddGoal()}
               />
               <div className="flex justify-end gap-2 mt-4">
-                <button onClick={() => setIsAddingGoal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                <button onClick={() => setIsAddingGoal(false)} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors">
                   Anuluj
                 </button>
                 <button onClick={handleAddGoal} className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
@@ -284,8 +284,8 @@ function GoalItem({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-300',
-        isExpanded ? 'border-indigo-200 dark:border-indigo-800 shadow-md' : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700'
+        'bg-white dark:bg-tp-surface rounded-2xl border transition-all duration-300',
+        isExpanded ? 'border-indigo-200 dark:border-indigo-800 shadow-md' : 'border-slate-200 dark:border-white/6 shadow-sm hover:border-slate-300 dark:hover:border-white/10'
       )}
     >
       <div className="p-5 flex items-center gap-4">
@@ -326,14 +326,14 @@ function GoalItem({
           <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
             <Trash2 className="w-4 h-4" />
           </button>
-          <button onClick={onToggleExpand} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+          <button onClick={onToggleExpand} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-lg transition-colors">
             {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="px-5 pb-6 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-in fade-in duration-200">
+        <div className="px-5 pb-6 pt-2 border-t border-slate-100 dark:border-white/6 space-y-6 animate-in fade-in duration-200">
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Opis celu</label>
             {isEditing ? (
@@ -341,7 +341,7 @@ function GoalItem({
                 value={editDesc}
                 onChange={(e) => setEditDesc(e.target.value)}
                 placeholder="Dodaj szczegółowy opis swojego celu..."
-                className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[100px] text-slate-700 dark:text-slate-300"
+                className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[100px] text-slate-700 dark:text-slate-300"
               />
             ) : (
               <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed">
@@ -371,7 +371,7 @@ function GoalItem({
                   onChange={(e) => setNewSubtask(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
                   placeholder="Dodaj kolejny krok..."
-                  className="flex-1 bg-transparent border-b border-slate-200 dark:border-slate-800 py-1 text-sm focus:border-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                  className="flex-1 bg-transparent border-b border-slate-200 dark:border-white/6 py-1 text-sm focus:border-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
                 />
                 <button onClick={handleAddSubtask} className="p-1 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-md transition-colors">
                   <Plus className="w-5 h-5" />
