@@ -1533,15 +1533,29 @@ export default function App() {
   };
 
   const handleSaveDailyTimelineForDate = async (date: string, timeline: DailyTimeline) => {
+    const optimistic: DailyTimeline = {
+      ...timeline,
+      user_id: ANONYMOUS_USER_ID,
+      date,
+      events: timeline.events || [],
+    };
+
+    // Optymistycznie aktualizuj stan lokalny od razu, żeby kolejne szybkie akcje (dodawanie eventów)
+    // nie bazowały na starych propsach i nie nadpisywały poprzednich zmian.
+    setDailyTimelines(prev => ({
+      ...prev,
+      [date]: optimistic
+    }));
+
     try {
       // Jeśli timeline ma placeholderowe ID (np. "new-YYYY-MM-DD"), nie wysyłaj go do bazy,
       // bo kolumna `id` jest UUID i Supabase zwróci błąd walidacji.
       const shouldOmitId = typeof timeline.id === 'string' && timeline.id.startsWith('new-');
       const payload: any = {
-        ...(shouldOmitId ? {} : { id: timeline.id }),
-        wake_up_time: timeline.wake_up_time,
-        sleep_time: timeline.sleep_time,
-        events: timeline.events || [],
+        ...(shouldOmitId ? {} : { id: optimistic.id }),
+        wake_up_time: optimistic.wake_up_time,
+        sleep_time: optimistic.sleep_time,
+        events: optimistic.events || [],
         user_id: ANONYMOUS_USER_ID,
         date,
       };
@@ -1556,20 +1570,15 @@ export default function App() {
 
       setDailyTimelines(prev => ({
         ...prev,
-        [date]: (data as DailyTimeline) || { ...timeline, user_id: ANONYMOUS_USER_ID, date }
+        [date]: (data as DailyTimeline) || optimistic
       }));
     } catch (err: any) {
       console.error('Error saving daily timeline:', err);
       // Fallback to local storage if table doesn't exist
       const saved = localStorage.getItem('daily_timelines') || '{}';
       const parsed = JSON.parse(saved);
-      parsed[date] = timeline;
+      parsed[date] = optimistic;
       localStorage.setItem('daily_timelines', JSON.stringify(parsed));
-      
-      setDailyTimelines(prev => ({
-        ...prev,
-        [date]: timeline
-      }));
     }
   };
 
