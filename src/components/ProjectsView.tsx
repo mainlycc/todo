@@ -38,6 +38,9 @@ interface ProjectsViewProps {
   projects: Project[];
   setProjects: (projects: Project[]) => void;
   payments: Payment[];
+  /** Ustawiane z listy zadań — otwórz od razu szczegóły projektu o tym id */
+  openProjectId?: string | null;
+  onConsumedOpenProject?: () => void;
 }
 
 const COLORS = [
@@ -59,12 +62,26 @@ const COLORS = [
   '#f43f5e', // Rose 500
 ];
 
-export function ProjectsView({ projects, setProjects, payments }: ProjectsViewProps) {
+export function ProjectsView({ projects, setProjects, payments, openProjectId, onConsumedOpenProject }: ProjectsViewProps) {
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectType, setNewProjectType] = useState<'own' | 'client'>('own');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'created_at' | 'type' | 'title'>('created_at');
+
+  useEffect(() => {
+    if (!openProjectId) return;
+    const exists = projects.some(p => p.id === openProjectId);
+    if (exists) {
+      setExpandedProjectId(openProjectId);
+      onConsumedOpenProject?.();
+      return;
+    }
+    // Projekty już załadowane, ale id nie istnieje — nie zostawiaj „wiszącego” żądania w rodzicu
+    if (projects.length > 0) {
+      onConsumedOpenProject?.();
+    }
+  }, [openProjectId, projects, onConsumedOpenProject]);
 
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
   const pendingPaidProjectIds = new Set(

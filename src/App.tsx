@@ -1,6 +1,6 @@
 import { addMonths, format, isBefore, startOfDay, startOfMonth, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Moon,
@@ -56,7 +56,7 @@ import { DailyTimeline as DailyTimelineComponent } from './components/DailyTimel
 import { TaskTimer } from './components/TaskTimer';
 import { supabase } from './lib/supabase';
 import { ANONYMOUS_USER_ID } from './constants';
-import { Priority, Task, Payment, PaymentMonthOverride, ViewMode, TaskColor, RecurringTask, DailyNote, Project, ProjectTask, DailyTimeline, DailyTimelineEvent } from './types';
+import { Priority, Task, Payment, PaymentMonthOverride, ViewMode, TaskColor, RecurringTask, DailyNote, Project, ProjectTask, ProjectTurn, DailyTimeline, DailyTimelineEvent } from './types';
 import { cn } from './utils';
 import { PaymentsHistoryView } from './components/PaymentsHistoryView';
 const QUEUE_DATE = '2099-12-31';
@@ -145,10 +145,11 @@ const MinimalTaskItem: React.FC<{
   onToggleSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
   onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
   onFocus: (id: string) => void,
+  onOpenProject?: (projectId: string) => void,
   collapseSignal?: number,
   dragHandleProps?: any,
   isDragging?: boolean
-}> = ({ task, projects, onToggleComplete, onUpdateTask, onAddSubtask, onToggleSubtask, onDeleteSubtask, onFocus, collapseSignal, dragHandleProps, isDragging }) => {
+}> = ({ task, projects, onToggleComplete, onUpdateTask, onAddSubtask, onToggleSubtask, onDeleteSubtask, onFocus, onOpenProject, collapseSignal, dragHandleProps, isDragging }) => {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.notes || '');
   const [isExpanded, setIsExpanded] = useState(!!task.notes || (task.subtasks && task.subtasks.length > 0));
@@ -248,24 +249,58 @@ const MinimalTaskItem: React.FC<{
           )}
         />
         {task.project_title ? (
-          <span 
-            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5"
-            style={{ 
-              backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
-              color: projectColor || 'inherit',
-              borderColor: projectColor ? `${projectColor}30` : 'transparent'
-            }}
-          >
-            {matchedProject?.emoji ? matchedProject.emoji : null}
-            {task.project_title}
-          </span>
+          matchedProject && onOpenProject && !task.completed ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenProject(matchedProject.id);
+              }}
+              title={`Otwórz projekt: ${task.project_title}`}
+              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              style={{ 
+                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
+                color: projectColor || 'inherit',
+                borderColor: projectColor ? `${projectColor}30` : 'transparent'
+              }}
+            >
+              {matchedProject?.emoji ? matchedProject.emoji : null}
+              {task.project_title}
+            </button>
+          ) : (
+            <span 
+              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5"
+              style={{ 
+                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
+                color: projectColor || 'inherit',
+                borderColor: projectColor ? `${projectColor}30` : 'transparent'
+              }}
+            >
+              {matchedProject?.emoji ? matchedProject.emoji : null}
+              {task.project_title}
+            </span>
+          )
         ) : task.category ? (
-          <span
-            className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
-            title="Projekt"
-          >
-            {task.category}
-          </span>
+          matchedProject && onOpenProject && !task.completed ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenProject(matchedProject.id);
+              }}
+              title={`Otwórz projekt: ${task.category}`}
+              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-tp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            >
+              {task.category}
+            </button>
+          ) : (
+            <span
+              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
+              title="Projekt"
+            >
+              {task.category}
+            </span>
+          )
         ) : null}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
@@ -356,6 +391,16 @@ const MinimalTaskItem: React.FC<{
 
 export default function App() {
   const [view, setView] = useState<ViewMode>('tasks');
+  const [openProjectTargetId, setOpenProjectTargetId] = useState<string | null>(null);
+
+  const handleConsumedOpenProject = useCallback(() => {
+    setOpenProjectTargetId(null);
+  }, []);
+
+  const handleOpenProjectFromTask = useCallback((projectId: string) => {
+    setOpenProjectTargetId(projectId);
+    setView('projects');
+  }, []);
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const [collapseAllTasksSignal, setCollapseAllTasksSignal] = useState(0);
   const [paymentsMonth, setPaymentsMonth] = useState<Date>(() => startOfMonth(new Date()));
@@ -609,12 +654,12 @@ export default function App() {
           } catch {
             /* ignore */
           }
-          const merged = list.map((p) => {
+          const merged = list.map((p): Project => {
             const t = p.turn;
             if (t === 'mine' || t === 'theirs') return p;
             const lt = localById.get(p.id)?.turn;
-            if (lt === 'mine' || lt === 'theirs') return { ...p, turn: lt };
-            return { ...p, turn: 'mine' };
+            if (lt === 'mine' || lt === 'theirs') return { ...p, turn: lt as ProjectTurn };
+            return { ...p, turn: 'mine' satisfies ProjectTurn };
           });
           setProjects(merged);
         } else {
@@ -1789,10 +1834,11 @@ export default function App() {
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-tp-canvas overflow-hidden transition-colors duration-300">
       {activeTimerTask && (
-        <TaskTimer 
-          task={activeTimerTask} 
-          onStop={handleStopTimer} 
-          onClose={() => setActiveTimerTask(null)} 
+        <TaskTimer
+          key={activeTimerTask.id}
+          task={activeTimerTask}
+          onStop={handleStopTimer}
+          onClose={() => setActiveTimerTask(null)}
         />
       )}
       <Sidebar currentView={view} onViewChange={setView} />
@@ -1959,6 +2005,7 @@ export default function App() {
                                   onToggleSubtask={handleToggleSubtask}
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
+                                  onOpenProject={handleOpenProjectFromTask}
                                   collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
@@ -1974,6 +2021,8 @@ export default function App() {
                                   task={task}
                                   projectColor={getProjectForTask(task)?.color || null}
                                   projectEmoji={getProjectForTask(task)?.emoji || null}
+                                  linkedProjectId={getProjectForTask(task)?.id ?? null}
+                                  onOpenProject={handleOpenProjectFromTask}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -2057,6 +2106,7 @@ export default function App() {
                                   onToggleSubtask={handleToggleSubtask}
                                   onDeleteSubtask={handleDeleteSubtask}
                                   onFocus={handleFocusTask}
+                                  onOpenProject={handleOpenProjectFromTask}
                                   collapseSignal={collapseAllTasksSignal}
                                 />
                               ))}
@@ -2072,6 +2122,8 @@ export default function App() {
                                   task={task}
                                   projectColor={getProjectForTask(task)?.color || null}
                                   projectEmoji={getProjectForTask(task)?.emoji || null}
+                                  linkedProjectId={getProjectForTask(task)?.id ?? null}
+                                  onOpenProject={handleOpenProjectFromTask}
                                   onToggleComplete={handleToggleComplete}
                                   onDelete={handleDelete}
                                   onDeleteSeries={handleDeleteSeries}
@@ -2198,7 +2250,13 @@ export default function App() {
       )}
 
       {view === 'projects' && (
-        <ProjectsView projects={projects} setProjects={setProjects} payments={payments} />
+        <ProjectsView
+          projects={projects}
+          setProjects={setProjects}
+          payments={payments}
+          openProjectId={openProjectTargetId}
+          onConsumedOpenProject={handleConsumedOpenProject}
+        />
       )}
     </div>
   </main>
