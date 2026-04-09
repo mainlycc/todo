@@ -61,6 +61,102 @@ import { cn } from './utils';
 import { PaymentsHistoryView } from './components/PaymentsHistoryView';
 const QUEUE_DATE = '2099-12-31';
 
+function normalizeDailyTimelineEvents(raw: unknown): DailyTimelineEvent[] {
+  if (Array.isArray(raw)) return raw as DailyTimelineEvent[];
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw);
+      return Array.isArray(p) ? (p as DailyTimelineEvent[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function normalizeDailyTimelineFromApiRow(raw: unknown): DailyTimeline | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const t = raw as Record<string, unknown>;
+  if (typeof t.date !== 'string' || !t.date) return null;
+  const events = normalizeDailyTimelineEvents(t.events);
+  return {
+    id: typeof t.id === 'string' ? t.id : `new-${t.date}`,
+    user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
+    date: t.date,
+    wake_up_time: typeof t.wake_up_time === 'string' ? t.wake_up_time : undefined,
+    sleep_time: typeof t.sleep_time === 'string' ? t.sleep_time : undefined,
+    events,
+  };
+}
+
+function parseDailyTimelinesFromLocalStorage(): Record<string, DailyTimeline> {
+  const out: Record<string, DailyTimeline> = {};
+  try {
+    const raw = localStorage.getItem('daily_timelines');
+    if (!raw) return out;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') return out;
+    for (const [dateKey, value] of Object.entries(parsed)) {
+      if (!value || typeof value !== 'object') continue;
+      const t = value as Record<string, unknown>;
+      const date = typeof t.date === 'string' && t.date ? t.date : dateKey;
+      const events = normalizeDailyTimelineEvents(t.events);
+      out[dateKey] = {
+        id: typeof t.id === 'string' ? t.id : `new-${date}`,
+        user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
+        date,
+        wake_up_time: typeof t.wake_up_time === 'string' ? t.wake_up_time : undefined,
+        sleep_time: typeof t.sleep_time === 'string' ? t.sleep_time : undefined,
+        events,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return out;
+}
+
+/** Po odświeżeniu serwer może mieć pusty lub nieaktualny `events` względem localStorage — scalamy per data. */
+function mergeServerAndLocalDailyTimelines(
+  server: Record<string, DailyTimeline>,
+  localOrSession: Record<string, DailyTimeline>
+): Record<string, DailyTimeline> {
+  const dates = new Set([...Object.keys(server), ...Object.keys(localOrSession)]);
+  const out: Record<string, DailyTimeline> = {};
+  for (const date of dates) {
+    const s = server[date];
+    const l = localOrSession[date];
+    if (!l) {
+      if (s) out[date] = s;
+      continue;
+    }
+    if (!s) {
+      out[date] = l;
+      continue;
+    }
+    const sLen = s.events?.length ?? 0;
+    const lLen = l.events?.length ?? 0;
+    if (lLen > sLen) {
+      out[date] = {
+        ...l,
+        id: String(l.id).startsWith('new-') && s.id ? s.id : l.id,
+        user_id: l.user_id || s.user_id || ANONYMOUS_USER_ID,
+      };
+    } else if (sLen > lLen) {
+      out[date] = s;
+    } else {
+      out[date] = {
+        ...s,
+        ...l,
+        events: l.events,
+        id: String(l.id).startsWith('new-') && s.id ? s.id : l.id || s.id,
+        user_id: l.user_id || s.user_id || ANONYMOUS_USER_ID,
+      };
+    }
+  }
+  return out;
+}
+
 /** Szybkie zadania na dziś — tylko ikona, pełny opis w atrybucie title. */
 const QUICK_TODAY_PRESETS: { title: string; Icon: LucideIcon; hint: string }[] = [
   { title: 'Szukanie klientów', Icon: UserSearch, hint: 'Dodaj zadanie: szukanie klientów' },
@@ -612,21 +708,18 @@ export default function App() {
         if (!timelineError && timelineData != null) {
           console.log('Daily timelines fetched:', timelineData.length);
           const timelineMap: Record<string, DailyTimeline> = {};
-          timelineData.forEach(t => {
-            timelineMap[t.date] = t;
+          timelineData.forEach(raw => {
+            const t = normalizeDailyTimelineFromApiRow(raw);
+            if (t) timelineMap[t.date] = t;
           });
-          // Lokalny stan wygrywa przy kolizji — unikamy nadpisania zmian zrobionych przed końcem fetcha
-          // oraz „pustego” stanu po przełączeniu widoku, gdy serwer zwróci opóźnioną odpowiedź.
-          setDailyTimelines(prev => ({ ...timelineMap, ...prev }));
+          const fromLs = parseDailyTimelinesFromLocalStorage();
+          setDailyTimelines(prev => {
+            const session = { ...fromLs, ...prev };
+            return mergeServerAndLocalDailyTimelines(timelineMap, session);
+          });
         } else {
-          const saved = localStorage.getItem('daily_timelines');
-          if (saved) {
-            try {
-              setDailyTimelines(JSON.parse(saved));
-            } catch (e) {
-              console.error('Failed to parse daily timelines from local storage');
-            }
-          }
+          const fromLs = parseDailyTimelinesFromLocalStorage();
+          setDailyTimelines(prev => ({ ...fromLs, ...prev }));
         }
 
         // Fetch Projects
@@ -1613,6 +1706,18 @@ export default function App() {
       ...prev,
       [date]: optimistic
     }));
+
+    if (!isSupabaseConfigured) {
+      try {
+        const saved = localStorage.getItem('daily_timelines') || '{}';
+        const parsed = JSON.parse(saved);
+        parsed[date] = optimistic;
+        localStorage.setItem('daily_timelines', JSON.stringify(parsed));
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
 
     try {
       // Jeśli timeline ma placeholderowe ID (np. "new-YYYY-MM-DD"), nie wysyłaj go do bazy,
