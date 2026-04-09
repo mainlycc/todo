@@ -609,15 +609,16 @@ export default function App() {
           .select('*');
         
         if (timelineError) console.error('Error fetching daily timelines:', timelineError);
-        if (timelineData) {
+        if (!timelineError && timelineData != null) {
           console.log('Daily timelines fetched:', timelineData.length);
           const timelineMap: Record<string, DailyTimeline> = {};
           timelineData.forEach(t => {
             timelineMap[t.date] = t;
           });
-          setDailyTimelines(timelineMap);
+          // Lokalny stan wygrywa przy kolizji — unikamy nadpisania zmian zrobionych przed końcem fetcha
+          // oraz „pustego” stanu po przełączeniu widoku, gdy serwer zwróci opóźnioną odpowiedź.
+          setDailyTimelines(prev => ({ ...timelineMap, ...prev }));
         } else {
-          // Fallback to local storage
           const saved = localStorage.getItem('daily_timelines');
           if (saved) {
             try {
@@ -781,6 +782,27 @@ export default function App() {
   }, [tasks.length, projects.length]); // Re-run when task count changes (e.g. after initial fetch)
 
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  const emptyDailyTimelineFallback = useMemo(
+    (): DailyTimeline => ({
+      id: `new-${selectedDateStr}`,
+      user_id: ANONYMOUS_USER_ID,
+      date: selectedDateStr,
+      wake_up_time: '08:00',
+      sleep_time: '00:00',
+      events: [
+        {
+          id: `sleep-${selectedDateStr}`,
+          type: 'sleep',
+          time: '00:00',
+          title: 'Sen',
+          duration: 480,
+          color: '#1D4ED8',
+        },
+      ],
+    }),
+    [selectedDateStr]
+  );
 
   // Auto-generate recurring tasks for the selected date
   useEffect(() => {
@@ -1613,10 +1635,26 @@ export default function App() {
 
       if (error) throw error;
 
+      const row = data as DailyTimeline | null;
+      // Zostawiamy treść zapisu (optimistic); z API bierzemy głównie `id` po pierwszym insertcie — pełna odpowiedź bywa niepełna i mogłaby wyczyścić `events`.
+      const merged: DailyTimeline = {
+        ...optimistic,
+        id: row?.id ?? optimistic.id,
+      };
+
       setDailyTimelines(prev => ({
         ...prev,
-        [date]: (data as DailyTimeline) || optimistic
+        [date]: merged
       }));
+
+      try {
+        const saved = localStorage.getItem('daily_timelines') || '{}';
+        const parsed = JSON.parse(saved);
+        parsed[date] = merged;
+        localStorage.setItem('daily_timelines', JSON.stringify(parsed));
+      } catch {
+        /* ignore */
+      }
     } catch (err: any) {
       console.error('Error saving daily timeline:', err);
       // Fallback to local storage if table doesn't exist
@@ -1628,8 +1666,7 @@ export default function App() {
   };
 
   const handleSaveDailyTimeline = async (timeline: DailyTimeline) => {
-    const date = format(selectedDate, 'yyyy-MM-dd');
-    return handleSaveDailyTimelineForDate(date, timeline);
+    return handleSaveDailyTimelineForDate(selectedDateStr, timeline);
   };
 
   const handleMoveToQueue = async () => {
@@ -2169,28 +2206,12 @@ export default function App() {
 
           <div className="w-[400px] flex-shrink-0">
             <DailyNotePanel
-              date={format(selectedDate, 'yyyy-MM-dd')}
-              content={dailyNotes[format(selectedDate, 'yyyy-MM-dd')] || ''}
+              date={selectedDateStr}
+              content={dailyNotes[selectedDateStr] || ''}
               onChange={handleSaveDailyNote}
             />
             <DailyTimelineComponent
-              timeline={dailyTimelines[format(selectedDate, 'yyyy-MM-dd')] || {
-                id: (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? crypto.randomUUID() : `new-${format(selectedDate, 'yyyy-MM-dd')}`,
-                user_id: ANONYMOUS_USER_ID,
-                date: format(selectedDate, 'yyyy-MM-dd'),
-                wake_up_time: '08:00',
-                sleep_time: '00:00',
-                events: [
-                  {
-                    id: (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? crypto.randomUUID() : `sleep-${format(selectedDate, 'yyyy-MM-dd')}`,
-                    type: 'sleep',
-                    time: '00:00',
-                    title: 'Sen',
-                    duration: 480,
-                    color: '#1D4ED8'
-                  }
-                ]
-              }}
+              timeline={dailyTimelines[selectedDateStr] || emptyDailyTimelineFallback}
               onUpdate={handleSaveDailyTimeline}
               workBlockDoneTasks={workBlockDoneTasksForDay}
             />
