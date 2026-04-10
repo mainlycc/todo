@@ -157,6 +157,59 @@ function mergeServerAndLocalDailyTimelines(
   return out;
 }
 
+const TIMELINE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Payload pod `daily_timelines` — `events` jako czysty JSON (JSONB), bez `undefined`. */
+function buildDailyTimelineUpsertPayload(timeline: DailyTimeline, date: string): Record<string, unknown> {
+  const events = JSON.parse(JSON.stringify(timeline.events || [])) as unknown[];
+  const id = timeline.id;
+  const omitId =
+    typeof id !== 'string' ||
+    id.startsWith('new-') ||
+    !TIMELINE_UUID_RE.test(id);
+  return {
+    ...(omitId ? {} : { id }),
+    wake_up_time: timeline.wake_up_time ?? null,
+    sleep_time: timeline.sleep_time ?? null,
+    events,
+    user_id: ANONYMOUS_USER_ID,
+    date,
+  };
+}
+
+function isSupabaseEnvConfigured(): boolean {
+  const url = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+  const key = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+  return !!(
+    url &&
+    key &&
+    url !== 'https://placeholder.supabase.co' &&
+    key !== 'placeholder'
+  );
+}
+
+/** Gdy po mergu lokalnie jest więcej danych niż w bazie — jeden `upsert` na datę, żeby Supabase nadążył. */
+async function pushRicherTimelinesToSupabase(
+  serverByDate: Record<string, DailyTimeline>,
+  merged: Record<string, DailyTimeline>
+) {
+  if (!isSupabaseEnvConfigured()) return;
+  for (const date of Object.keys(merged)) {
+    const s = serverByDate[date];
+    const m = merged[date];
+    const sLen = s?.events?.length ?? 0;
+    const mLen = m.events?.length ?? 0;
+    if (mLen === 0) continue;
+    if (s && mLen <= sLen) continue;
+    const payload = buildDailyTimelineUpsertPayload(m, date);
+    const { error } = await supabase.from('daily_timelines').upsert(payload, { onConflict: 'user_id,date' });
+    if (error) {
+      console.error('Synchronizacja harmonogramu do Supabase nie powiodła się:', date, error);
+    }
+  }
+}
+
 /** Szybkie zadania na dziś — tylko ikona, pełny opis w atrybucie title. */
 const QUICK_TODAY_PRESETS: { title: string; Icon: LucideIcon; hint: string }[] = [
   { title: 'Szukanie klientów', Icon: UserSearch, hint: 'Dodaj zadanie: szukanie klientów' },
@@ -539,6 +592,8 @@ export default function App() {
   const [paymentMonthOverrides, setPaymentMonthOverrides] = useState<PaymentMonthOverride[]>([]);
   const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
   const [dailyTimelines, setDailyTimelines] = useState<Record<string, DailyTimeline>>({});
+  /** Po pierwszym zakończeniu fetchu — zapobiega zapisowi bloku „Praca” zanim do stanu trafią harmonogramy (wtedy giną m.in. sen i inne wpisy). */
+  const [hasCompletedTimelineBootstrap, setHasCompletedTimelineBootstrap] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeTimerTask, setActiveTimerTask] = useState<Task | null>(null);
   const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
@@ -715,11 +770,21 @@ export default function App() {
           const fromLs = parseDailyTimelinesFromLocalStorage();
           setDailyTimelines(prev => {
             const session = { ...fromLs, ...prev };
-            return mergeServerAndLocalDailyTimelines(timelineMap, session);
+            const merged = mergeServerAndLocalDailyTimelines(timelineMap, session);
+            queueMicrotask(() => {
+              void pushRicherTimelinesToSupabase(timelineMap, merged);
+            });
+            return merged;
           });
         } else {
           const fromLs = parseDailyTimelinesFromLocalStorage();
-          setDailyTimelines(prev => ({ ...fromLs, ...prev }));
+          setDailyTimelines(prev => {
+            const next = { ...fromLs, ...prev };
+            queueMicrotask(() => {
+              void pushRicherTimelinesToSupabase({}, next);
+            });
+            return next;
+          });
         }
 
         // Fetch Projects
@@ -811,6 +876,8 @@ export default function App() {
       } catch (err: any) {
         console.error('Error in fetchData:', err);
         allowPersistTaskOrder.current = true;
+      } finally {
+        setHasCompletedTimelineBootstrap(true);
       }
     };
 
@@ -1119,19 +1186,22 @@ export default function App() {
   // Jeśli są ukończone zadania do pokazania, a harmonogram nie ma bloku „Praca”,
   // automatycznie go tworzymy dla wybranego dnia (żeby lista zawsze była widoczna w tym jednym bloku).
   useEffect(() => {
+    if (!hasCompletedTimelineBootstrap) return;
     if (!selectedDateStr) return;
     if (workBlockDoneTasksForDay.length === 0) return;
     const current = dailyTimelines[selectedDateStr];
-    const events = current?.events || [];
+    // Brak zapisanego wiersza: bierzemy domyślny szablon (m.in. sen), żeby nie zapisać samej „Pracy” i nie nadpisać później pełnych danych z API.
+    const base = current ?? emptyDailyTimelineFallback;
+    const events = base.events || [];
     const hasWorkBlock = events.some(e => e.type === 'other' && e.title.trim().toLowerCase() === 'praca');
     if (hasWorkBlock) return;
 
     const nextTimeline: DailyTimeline = {
-      id: current?.id || crypto.randomUUID(),
-      user_id: current?.user_id || ANONYMOUS_USER_ID,
+      id: base.id || crypto.randomUUID(),
+      user_id: base.user_id || ANONYMOUS_USER_ID,
       date: selectedDateStr,
-      wake_up_time: current?.wake_up_time,
-      sleep_time: current?.sleep_time,
+      wake_up_time: base.wake_up_time,
+      sleep_time: base.sleep_time,
       events: [
         ...events,
         {
@@ -1147,7 +1217,13 @@ export default function App() {
 
     handleSaveDailyTimelineForDate(selectedDateStr, nextTimeline);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDateStr, workBlockDoneTasksForDay.length, dailyTimelines]);
+  }, [
+    selectedDateStr,
+    workBlockDoneTasksForDay.length,
+    hasCompletedTimelineBootstrap,
+    dailyTimelines[selectedDateStr],
+    emptyDailyTimelineFallback,
+  ]);
 
   const todayTasks = sortTasks(allTasks.filter(t => t.date === selectedDateStr), selectedDateStr);
   const queueTasksBase = allTasks
@@ -1720,17 +1796,7 @@ export default function App() {
     }
 
     try {
-      // Jeśli timeline ma placeholderowe ID (np. "new-YYYY-MM-DD"), nie wysyłaj go do bazy,
-      // bo kolumna `id` jest UUID i Supabase zwróci błąd walidacji.
-      const shouldOmitId = typeof timeline.id === 'string' && timeline.id.startsWith('new-');
-      const payload: any = {
-        ...(shouldOmitId ? {} : { id: optimistic.id }),
-        wake_up_time: optimistic.wake_up_time,
-        sleep_time: optimistic.sleep_time,
-        events: optimistic.events || [],
-        user_id: ANONYMOUS_USER_ID,
-        date,
-      };
+      const payload = buildDailyTimelineUpsertPayload(optimistic, date);
 
       const { data, error } = await supabase
         .from('daily_timelines')
