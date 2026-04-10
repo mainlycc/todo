@@ -53,13 +53,32 @@ export function createRichNoteExtensions(placeholder: string) {
 export const RICH_NOTE_EDITOR_CONTENT_CLASS =
   'tiptap prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[200px] text-slate-600 dark:text-slate-400 prose-p:my-1 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-1 prose-li:my-0';
 
-export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null }) {
+type RichNoteClockMode = 'time' | 'date';
+
+export function RichNoteFormattingMenuBar({
+  editor,
+  clockMode = 'time',
+}: {
+  editor: Editor | null;
+  /** `time` — notatka dnia; `date` — notatki w projekcie (dzień + data po polsku) */
+  clockMode?: RichNoteClockMode;
+}) {
   if (!editor) {
     return null;
   }
 
-  const insertTime = () => {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const insertClockStamp = () => {
+    if (clockMode === 'date') {
+      const stamp = new Date().toLocaleDateString('pl-PL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      editor.chain().focus().insertContent(`${stamp} `).run();
+      return;
+    }
+    const time = new Date().toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
     editor.chain().focus().insertContent(`${time} `).run();
   };
 
@@ -100,9 +119,9 @@ export function RichNoteFormattingMenuBar({ editor }: { editor: Editor | null })
       <div className="w-px h-4 bg-slate-200 dark:bg-tp-raised mx-1" />
       <button
         type="button"
-        onClick={insertTime}
+        onClick={insertClockStamp}
         className="p-1.5 rounded-md transition-colors text-slate-500 hover:bg-slate-100 dark:hover:bg-tp-muted"
-        title="Wstaw aktualną godzinę"
+        title={clockMode === 'date' ? 'Wstaw dzisiejszą datę (dzień tygodnia)' : 'Wstaw aktualną godzinę'}
       >
         <Clock className="w-4 h-4" />
       </button>

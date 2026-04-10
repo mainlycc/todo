@@ -31,10 +31,13 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   ] as const;
 
   return (
-    <aside className={cn(
+    <aside
+      data-app-sidebar
+      className={cn(
       "bg-slate-900 dark:bg-tp-sidebar text-slate-300 dark:text-neutral-400 flex flex-col h-full flex-shrink-0 transition-all duration-300 relative",
       isCollapsed ? "w-20" : "w-64"
-    )}>
+    )}
+    >
       <div className={cn("p-6 flex items-center h-20", isCollapsed ? "justify-center" : "justify-start")}>
         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
           <CheckSquare className="w-6 h-6 text-tp-accent flex-shrink-0" />

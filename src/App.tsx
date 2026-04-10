@@ -1,542 +1,39 @@
-import { addMonths, format, isBefore, startOfDay, startOfMonth, subMonths } from 'date-fns';
+import { format, isBefore, startOfDay, startOfMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  Moon,
-  Sun,
-  List,
-  ChevronRight,
-  ChevronDown,
-  X,
-  GripVertical,
-  Play,
-  Clock,
-  Archive,
-  ChevronLeft,
-  UserSearch,
-  Sparkles,
-  Shirt,
-  Mail,
-  Laptop,
-  ShoppingBasket,
-} from 'lucide-react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragOverEvent,
-  useDroppable,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { CalendarStrip } from './components/CalendarStrip';
-import { TaskForm } from './components/TaskForm';
-import { TaskItem } from './components/TaskItem';
-import { Sidebar } from './components/Sidebar';
-import { PaymentForm } from './components/PaymentForm';
-import { PaymentItem } from './components/PaymentItem';
-import { FocusMode } from './components/FocusMode';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { arrayMove } from '@dnd-kit/sortable';
+import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core';
+import { AppHeader } from './components/AppHeader';
 import { CalendarView } from './components/CalendarView';
-import { RulesView } from './components/RulesView';
+import { DaySidePanel } from './components/DaySidePanel';
+import { ExpectedPaymentsView } from './components/ExpectedPaymentsView';
+import { FocusMode } from './components/FocusMode';
 import { GoalsView } from './components/GoalsView';
-import { ProjectsView } from './components/ProjectsView';
-import { DailyNotePanel } from './components/DailyNotePanel';
-import { DailyTimeline as DailyTimelineComponent } from './components/DailyTimeline';
-import { TaskTimer } from './components/TaskTimer';
-import { supabase } from './lib/supabase';
-import { ANONYMOUS_USER_ID } from './constants';
-import { Priority, Task, Payment, PaymentMonthOverride, ViewMode, TaskColor, RecurringTask, DailyNote, Project, ProjectTask, ProjectTurn, DailyTimeline, DailyTimelineEvent } from './types';
-import { cn } from './utils';
 import { PaymentsHistoryView } from './components/PaymentsHistoryView';
-const QUEUE_DATE = '2099-12-31';
-
-function normalizeDailyTimelineEvents(raw: unknown): DailyTimelineEvent[] {
-  if (Array.isArray(raw)) return raw as DailyTimelineEvent[];
-  if (typeof raw === 'string') {
-    try {
-      const p = JSON.parse(raw);
-      return Array.isArray(p) ? (p as DailyTimelineEvent[]) : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function normalizeDailyTimelineFromApiRow(raw: unknown): DailyTimeline | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const t = raw as Record<string, unknown>;
-  if (typeof t.date !== 'string' || !t.date) return null;
-  const events = normalizeDailyTimelineEvents(t.events);
-  return {
-    id: typeof t.id === 'string' ? t.id : `new-${t.date}`,
-    user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
-    date: t.date,
-    wake_up_time: typeof t.wake_up_time === 'string' ? t.wake_up_time : undefined,
-    sleep_time: typeof t.sleep_time === 'string' ? t.sleep_time : undefined,
-    events,
-  };
-}
-
-function parseDailyTimelinesFromLocalStorage(): Record<string, DailyTimeline> {
-  const out: Record<string, DailyTimeline> = {};
-  try {
-    const raw = localStorage.getItem('daily_timelines');
-    if (!raw) return out;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    if (!parsed || typeof parsed !== 'object') return out;
-    for (const [dateKey, value] of Object.entries(parsed)) {
-      if (!value || typeof value !== 'object') continue;
-      const t = value as Record<string, unknown>;
-      const date = typeof t.date === 'string' && t.date ? t.date : dateKey;
-      const events = normalizeDailyTimelineEvents(t.events);
-      out[dateKey] = {
-        id: typeof t.id === 'string' ? t.id : `new-${date}`,
-        user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
-        date,
-        wake_up_time: typeof t.wake_up_time === 'string' ? t.wake_up_time : undefined,
-        sleep_time: typeof t.sleep_time === 'string' ? t.sleep_time : undefined,
-        events,
-      };
-    }
-  } catch {
-    /* ignore */
-  }
-  return out;
-}
-
-/** Po odświeżeniu serwer może mieć pusty lub nieaktualny `events` względem localStorage — scalamy per data. */
-function mergeServerAndLocalDailyTimelines(
-  server: Record<string, DailyTimeline>,
-  localOrSession: Record<string, DailyTimeline>
-): Record<string, DailyTimeline> {
-  const dates = new Set([...Object.keys(server), ...Object.keys(localOrSession)]);
-  const out: Record<string, DailyTimeline> = {};
-  for (const date of dates) {
-    const s = server[date];
-    const l = localOrSession[date];
-    if (!l) {
-      if (s) out[date] = s;
-      continue;
-    }
-    if (!s) {
-      out[date] = l;
-      continue;
-    }
-    const sLen = s.events?.length ?? 0;
-    const lLen = l.events?.length ?? 0;
-    if (lLen > sLen) {
-      out[date] = {
-        ...l,
-        id: String(l.id).startsWith('new-') && s.id ? s.id : l.id,
-        user_id: l.user_id || s.user_id || ANONYMOUS_USER_ID,
-      };
-    } else if (sLen > lLen) {
-      out[date] = s;
-    } else {
-      out[date] = {
-        ...s,
-        ...l,
-        events: l.events,
-        id: String(l.id).startsWith('new-') && s.id ? s.id : l.id || s.id,
-        user_id: l.user_id || s.user_id || ANONYMOUS_USER_ID,
-      };
-    }
-  }
-  return out;
-}
-
-const TIMELINE_UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-/** Payload pod `daily_timelines` — `events` jako czysty JSON (JSONB), bez `undefined`. */
-function buildDailyTimelineUpsertPayload(timeline: DailyTimeline, date: string): Record<string, unknown> {
-  const events = JSON.parse(JSON.stringify(timeline.events || [])) as unknown[];
-  const id = timeline.id;
-  const omitId =
-    typeof id !== 'string' ||
-    id.startsWith('new-') ||
-    !TIMELINE_UUID_RE.test(id);
-  return {
-    ...(omitId ? {} : { id }),
-    wake_up_time: timeline.wake_up_time ?? null,
-    sleep_time: timeline.sleep_time ?? null,
-    events,
-    user_id: ANONYMOUS_USER_ID,
-    date,
-  };
-}
-
-function isSupabaseEnvConfigured(): boolean {
-  const url = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
-  const key = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
-  return !!(
-    url &&
-    key &&
-    url !== 'https://placeholder.supabase.co' &&
-    key !== 'placeholder'
-  );
-}
-
-/** Gdy po mergu lokalnie jest więcej danych niż w bazie — jeden `upsert` na datę, żeby Supabase nadążył. */
-async function pushRicherTimelinesToSupabase(
-  serverByDate: Record<string, DailyTimeline>,
-  merged: Record<string, DailyTimeline>
-) {
-  if (!isSupabaseEnvConfigured()) return;
-  for (const date of Object.keys(merged)) {
-    const s = serverByDate[date];
-    const m = merged[date];
-    const sLen = s?.events?.length ?? 0;
-    const mLen = m.events?.length ?? 0;
-    if (mLen === 0) continue;
-    if (s && mLen <= sLen) continue;
-    const payload = buildDailyTimelineUpsertPayload(m, date);
-    const { error } = await supabase.from('daily_timelines').upsert(payload, { onConflict: 'user_id,date' });
-    if (error) {
-      console.error('Synchronizacja harmonogramu do Supabase nie powiodła się:', date, error);
-    }
-  }
-}
-
-/** Szybkie zadania na dziś — tylko ikona, pełny opis w atrybucie title. */
-const QUICK_TODAY_PRESETS: { title: string; Icon: LucideIcon; hint: string }[] = [
-  { title: 'Szukanie klientów', Icon: UserSearch, hint: 'Dodaj zadanie: szukanie klientów' },
-  { title: 'Sprzątanie', Icon: Sparkles, hint: 'Dodaj zadanie: sprzątanie' },
-  { title: 'Pranie', Icon: Shirt, hint: 'Dodaj zadanie: pranie' },
-  { title: 'Poczta i follow-up', Icon: Mail, hint: 'Dodaj zadanie: poczta i follow-up' },
-  { title: 'Skupiona praca', Icon: Laptop, hint: 'Dodaj zadanie: skupiona praca' },
-  { title: 'Zakupy', Icon: ShoppingBasket, hint: 'Dodaj zadanie: zakupy' },
-];
-
-function DroppableContainer({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) {
-  const { setNodeRef } = useDroppable({ id });
-  return (
-    <div ref={setNodeRef} className={className}>
-      {children}
-    </div>
-  );
-}
-
-function SortableTaskItem(props: any) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.task.id });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-    position: isDragging ? 'relative' : undefined,
-  } as React.CSSProperties;
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <TaskItem
-        {...props}
-        dragHandleProps={{ ...attributes, ...listeners }}
-        isDragging={isDragging}
-      />
-    </div>
-  );
-}
-
-function SortableMinimalTaskItem(props: any) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.task.id });
-
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-    position: isDragging ? 'relative' : undefined,
-  } as React.CSSProperties;
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <MinimalTaskItem
-        {...props}
-        dragHandleProps={{ ...attributes, ...listeners }}
-        isDragging={isDragging}
-      />
-    </div>
-  );
-}
-
-const MinimalTaskItem: React.FC<{ 
-  task: Task, 
-  projects?: Project[],
-  onToggleComplete: (id: string) => Promise<void> | void, 
-  onUpdateTask: (task: Task) => Promise<void> | void,
-  onAddSubtask: (taskId: string, title: string) => Promise<void> | void,
-  onToggleSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
-  onDeleteSubtask: (taskId: string, subtaskId: string) => Promise<void> | void,
-  onFocus: (id: string) => void,
-  onOpenProject?: (projectId: string) => void,
-  collapseSignal?: number,
-  dragHandleProps?: any,
-  isDragging?: boolean
-}> = ({ task, projects, onToggleComplete, onUpdateTask, onAddSubtask, onToggleSubtask, onDeleteSubtask, onFocus, onOpenProject, collapseSignal, dragHandleProps, isDragging }) => {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.notes || '');
-  const [isExpanded, setIsExpanded] = useState(!!task.notes || (task.subtasks && task.subtasks.length > 0));
-  const [newSubtask, setNewSubtask] = useState('');
-
-  const project = projects?.find(p => p.id === task.project_id);
-  const projectColor = project?.color;
-  const matchedProject =
-    project ??
-    projects?.find(
-      pr =>
-        !!task.project_title &&
-        pr.title.toLowerCase() === task.project_title.trim().toLowerCase()
-    );
-
-  useEffect(() => {
-    setTitle(task.title);
-    setDescription(task.notes || '');
-  }, [task.title, task.notes]);
-
-  useEffect(() => {
-    if (collapseSignal === undefined) return;
-    setIsExpanded(false);
-  }, [collapseSignal]);
-
-  const handleSetPriority = (p: Priority) => {
-    if (p === task.priority) return;
-    onUpdateTask({ ...task, priority: p });
-  };
-
-  const priorityLevel: 1 | 2 | 3 =
-    task.priority === 'low' ? 1 : task.priority === 'medium' ? 2 : 3;
-  const litColorClass =
-    priorityLevel === 1
-      ? 'bg-blue-500 dark:bg-tp-accent'
-      : priorityLevel === 2
-        ? 'bg-amber-500 dark:bg-amber-400'
-        : 'bg-rose-500 dark:bg-rose-400';
-
-  const handleBlur = () => {
-    if (title.trim() !== task.title && title.trim() !== '') {
-      onUpdateTask({ ...task, title: title.trim() });
-    } else {
-      setTitle(task.title);
-    }
-  };
-
-  const handleDescriptionBlur = () => {
-    if (description.trim() !== (task.notes || '')) {
-      onUpdateTask({ ...task, notes: description.trim() });
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    } else if (e.key === 'Escape') {
-      setTitle(task.title);
-      e.currentTarget.blur();
-    }
-  };
-
-  const handleAddSubtask = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newSubtask.trim()) {
-      onAddSubtask(task.id, newSubtask.trim());
-      setNewSubtask('');
-    }
-  };
-
-  return (
-    <div className={cn("py-2 border-b border-slate-100 dark:border-white/6/50 last:border-0", isDragging && "opacity-50")}>
-      <div className="flex items-center gap-3">
-        <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400">
-          <GripVertical className="w-4 h-4" />
-        </div>
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)} 
-          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-        >
-          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </button>
-        <input
-          type="checkbox"
-          checked={task.completed}
-          onChange={() => onToggleComplete(task.id)}
-          className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-        />
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "text-base flex-1 bg-transparent border-none focus:ring-0 p-0 m-0 focus:outline-none",
-            task.completed ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-200"
-          )}
-        />
-        {task.project_title ? (
-          matchedProject && onOpenProject && !task.completed ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenProject(matchedProject.id);
-              }}
-              title={`Otwórz projekt: ${task.project_title}`}
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              style={{ 
-                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
-                color: projectColor || 'inherit',
-                borderColor: projectColor ? `${projectColor}30` : 'transparent'
-              }}
-            >
-              {matchedProject?.emoji ? matchedProject.emoji : null}
-              {task.project_title}
-            </button>
-          ) : (
-            <span 
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5"
-              style={{ 
-                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
-                color: projectColor || 'inherit',
-                borderColor: projectColor ? `${projectColor}30` : 'transparent'
-              }}
-            >
-              {matchedProject?.emoji ? matchedProject.emoji : null}
-              {task.project_title}
-            </span>
-          )
-        ) : task.category ? (
-          matchedProject && onOpenProject && !task.completed ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenProject(matchedProject.id);
-              }}
-              title={`Otwórz projekt: ${task.category}`}
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-tp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            >
-              {task.category}
-            </button>
-          ) : (
-            <span
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
-              title="Projekt"
-            >
-              {task.category}
-            </span>
-          )
-        ) : null}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSetPriority('low')}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 1 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
-            )}
-            title="Priorytet: luz (1 kropka)"
-          />
-          <button
-            type="button"
-            onClick={() => handleSetPriority('medium')}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 2 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
-            )}
-            title="Priorytet: ważne (2 kropki)"
-          />
-          <button
-            type="button"
-            onClick={() => handleSetPriority('high')}
-            className={cn(
-              "w-2.5 h-2.5 rounded-full transition-colors",
-              priorityLevel >= 3 ? litColorClass : "bg-slate-200 dark:bg-tp-raised hover:bg-slate-300 dark:hover:bg-neutral-600"
-            )}
-            title="Priorytet: turbo pilne (3 kropki)"
-          />
-        </div>
-        <button
-          onClick={() => onFocus(task.id)}
-          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
-          title="Tryb skupienia"
-        >
-          <Play className="w-4 h-4" />
-        </button>
-      </div>
-      {isExpanded && (
-        <div className="ml-11 mt-2 space-y-2">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={handleDescriptionBlur}
-            placeholder="Dodaj opis..."
-            className="w-full text-sm bg-transparent border-none focus:ring-0 p-0 m-0 text-slate-500 dark:text-slate-400 resize-none focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600"
-            rows={description ? Math.max(2, description.split('\n').length) : 1}
-          />
-          {task.subtasks && task.subtasks.length > 0 && (
-            <div className="space-y-1.5 mt-2">
-              {task.subtasks.map(subtask => (
-                <div key={subtask.id} className="flex items-center gap-2 group">
-                  <input 
-                    type="checkbox" 
-                    checked={subtask.completed} 
-                    onChange={() => onToggleSubtask(task.id, subtask.id)} 
-                    className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" 
-                  />
-                  <span className={cn(
-                    "text-sm flex-1", 
-                    subtask.completed ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-600 dark:text-slate-300"
-                  )}>
-                    {subtask.title}
-                  </span>
-                  <button 
-                    onClick={() => onDeleteSubtask(task.id, subtask.id)} 
-                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <input
-            type="text"
-            value={newSubtask}
-            onChange={(e) => setNewSubtask(e.target.value)}
-            onKeyDown={handleAddSubtask}
-            placeholder="Dodaj podzadanie (Enter)"
-            className="w-full text-sm bg-transparent border-none focus:ring-0 p-0 m-0 text-slate-600 dark:text-slate-300 focus:outline-none placeholder:text-slate-300 dark:placeholder:text-slate-600 mt-1"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+import { ProjectsView } from './components/ProjectsView';
+import { RulesView } from './components/RulesView';
+import { Sidebar } from './components/Sidebar';
+import { TaskTimer } from './components/TaskTimer';
+import { TasksWorkspace } from './components/TasksWorkspace';
+import { ANONYMOUS_USER_ID } from './constants';
+import { QUEUE_DATE } from './constants/tasks';
+import { useSupabaseEnv } from './hooks/useSupabaseEnv';
+import { useSupabaseInitialData } from './hooks/useSupabaseInitialData';
+import { buildDailyTimelineUpsertPayload } from './lib/dailyTimeline';
+import { supabase } from './lib/supabase';
+import type {
+  DailyTimeline,
+  DailyTimelineEvent,
+  PaymentMonthOverride,
+  Priority,
+  Project,
+  ProjectTask,
+  RecurringTask,
+  Task,
+  TaskColor,
+  ViewMode,
+} from './types';
+import { cn } from './utils';
 
 export default function App() {
   const [view, setView] = useState<ViewMode>('tasks');
@@ -585,31 +82,34 @@ export default function App() {
     }
     return true;
   });
-  
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [paymentMonthOverrides, setPaymentMonthOverrides] = useState<PaymentMonthOverride[]>([]);
-  const [dailyNotes, setDailyNotes] = useState<Record<string, string>>({});
-  const [dailyTimelines, setDailyTimelines] = useState<Record<string, DailyTimeline>>({});
-  /** Po pierwszym zakończeniu fetchu — zapobiega zapisowi bloku „Praca” zanim do stanu trafią harmonogramy (wtedy giną m.in. sen i inne wpisy). */
-  const [hasCompletedTimelineBootstrap, setHasCompletedTimelineBootstrap] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
+
+  const { isSupabaseConfigured } = useSupabaseEnv();
+
+  const {
+    tasks,
+    setTasks,
+    recurringTasks,
+    setRecurringTasks,
+    payments,
+    setPayments,
+    paymentMonthOverrides,
+    setPaymentMonthOverrides,
+    dailyNotes,
+    setDailyNotes,
+    dailyTimelines,
+    setDailyTimelines,
+    hasCompletedTimelineBootstrap,
+    projects,
+    setProjects,
+    taskOrder,
+    setTaskOrder,
+  } = useSupabaseInitialData();
+
   const [activeTimerTask, setActiveTimerTask] = useState<Task | null>(null);
-  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
-  const allowPersistTaskOrder = useRef(false);
 
   useEffect(() => {
     localStorage.setItem('taskCompletionDates', JSON.stringify(completionDates));
   }, [completionDates]);
-
-  useEffect(() => {
-    const url = (import.meta as any).env.VITE_SUPABASE_URL;
-    const key = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
-    if (!url || !key || url === 'https://placeholder.supabase.co' || key === 'placeholder') {
-      setIsSupabaseConfigured(false);
-    }
-  }, []);
 
   const updateProjectTask = async (taskId: string, updater: (pt: ProjectTask) => ProjectTask | null) => {
     setProjects(prev => {
@@ -643,32 +143,6 @@ export default function App() {
     localStorage.setItem('user_projects', JSON.stringify(projects));
   }, [projects]);
 
-  const [taskOrder, setTaskOrder] = useState<Record<string, string[]>>({});
-
-  useEffect(() => {
-    if (!allowPersistTaskOrder.current) return;
-    supabase
-      .from('user_task_order')
-      .upsert(
-        { user_id: ANONYMOUS_USER_ID, order_json: taskOrder },
-        { onConflict: 'user_id' }
-      )
-      .then(({ error }) => {
-        if (error) console.error('Error saving task order:', error);
-      });
-  }, [taskOrder]);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
-
   // Handle Dark Mode
   useEffect(() => {
     if (isDarkMode) {
@@ -684,205 +158,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('minimalView', String(isMinimalView));
   }, [isMinimalView]);
-
-  // Fetch Data from Supabase
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log('Fetching data from Supabase...');
-      try {
-        // Fetch Tasks
-        const { data: tasksData, error: tasksError } = await supabase
-          .from('tasks')
-          .select('*, subtasks(*)');
-        
-        if (tasksError) {
-          console.error('Error fetching tasks:', tasksError);
-          throw tasksError;
-        }
-
-        console.log('Tasks fetched:', tasksData?.length);
-        if (tasksData) {
-          setTasks(tasksData.map(t => ({
-            ...t,
-            subtasks: t.subtasks || []
-          })));
-        }
-
-        // Fetch Recurring Tasks
-        const { data: rtData, error: rtError } = await supabase
-          .from('recurring_tasks')
-          .select('*');
-        
-        if (rtError) console.error('Error fetching recurring tasks:', rtError);
-        if (rtData) {
-          console.log('Recurring tasks fetched:', rtData.length);
-          setRecurringTasks(rtData);
-        }
-
-        // Fetch Payments
-        const { data: paymentsData, error: pError } = await supabase
-          .from('payments')
-          .select('*');
-        
-        if (pError) console.error('Error fetching payments:', pError);
-        if (paymentsData) {
-          console.log('Payments fetched:', paymentsData.length);
-          setPayments(paymentsData);
-        }
-
-        // Fetch Payment Month Overrides
-        const { data: overridesData, error: oError } = await supabase
-          .from('payment_month_overrides')
-          .select('*');
-        if (oError) console.error('Error fetching payment month overrides:', oError);
-        if (overridesData) {
-          setPaymentMonthOverrides(overridesData as PaymentMonthOverride[]);
-        }
-
-        // Fetch Daily Notes
-        const { data: notesData, error: notesError } = await supabase
-          .from('daily_notes')
-          .select('*');
-        
-        if (notesError) console.error('Error fetching daily notes:', notesError);
-        if (notesData) {
-          console.log('Daily notes fetched:', notesData.length);
-          const notesMap: Record<string, string> = {};
-          notesData.forEach(n => {
-            notesMap[n.date] = n.content;
-          });
-          setDailyNotes(notesMap);
-        }
-
-        // Fetch Daily Timelines
-        const { data: timelineData, error: timelineError } = await supabase
-          .from('daily_timelines')
-          .select('*');
-        
-        if (timelineError) console.error('Error fetching daily timelines:', timelineError);
-        if (!timelineError && timelineData != null) {
-          console.log('Daily timelines fetched:', timelineData.length);
-          const timelineMap: Record<string, DailyTimeline> = {};
-          timelineData.forEach(raw => {
-            const t = normalizeDailyTimelineFromApiRow(raw);
-            if (t) timelineMap[t.date] = t;
-          });
-          const fromLs = parseDailyTimelinesFromLocalStorage();
-          setDailyTimelines(prev => {
-            const session = { ...fromLs, ...prev };
-            const merged = mergeServerAndLocalDailyTimelines(timelineMap, session);
-            queueMicrotask(() => {
-              void pushRicherTimelinesToSupabase(timelineMap, merged);
-            });
-            return merged;
-          });
-        } else {
-          const fromLs = parseDailyTimelinesFromLocalStorage();
-          setDailyTimelines(prev => {
-            const next = { ...fromLs, ...prev };
-            queueMicrotask(() => {
-              void pushRicherTimelinesToSupabase({}, next);
-            });
-            return next;
-          });
-        }
-
-        // Fetch Projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (projectsError) console.error('Error fetching projects:', projectsError);
-        if (projectsData && projectsData.length > 0) {
-          console.log('Projects fetched:', projectsData.length);
-          const list = projectsData as Project[];
-          let localById = new Map<string, Project>();
-          try {
-            const raw = localStorage.getItem('user_projects');
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) {
-                localById = new Map(
-                  parsed
-                    .filter((p: unknown) => p && typeof (p as Project).id === 'string')
-                    .map((p: Project) => [p.id, p])
-                );
-              }
-            }
-          } catch {
-            /* ignore */
-          }
-          const merged = list.map((p): Project => {
-            const t = p.turn;
-            if (t === 'mine' || t === 'theirs') return p;
-            const lt = localById.get(p.id)?.turn;
-            if (lt === 'mine' || lt === 'theirs') return { ...p, turn: lt as ProjectTurn };
-            return { ...p, turn: 'mine' satisfies ProjectTurn };
-          });
-          setProjects(merged);
-        } else {
-          // Migrate from local storage if Supabase is empty
-          const saved = localStorage.getItem('user_projects');
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              if (parsed.length > 0) {
-                const projectsToInsert = parsed.map((p: any) => ({
-                  ...p,
-                  user_id: ANONYMOUS_USER_ID,
-                }));
-                const { data: insertedData, error: insertError } = await supabase
-                  .from('projects')
-                  .insert(projectsToInsert)
-                  .select();
-                
-                if (!insertError && insertedData) {
-                  setProjects(insertedData);
-                } else {
-                  setProjects(parsed);
-                }
-              }
-            } catch (e) {
-              console.error('Failed to parse projects from local storage');
-            }
-          }
-        }
-
-        const { data: orderRow, error: orderErr } = await supabase
-          .from('user_task_order')
-          .select('order_json')
-          .eq('user_id', ANONYMOUS_USER_ID)
-          .maybeSingle();
-        if (orderErr) console.error('Error fetching task order:', orderErr);
-        if (orderRow?.order_json && typeof orderRow.order_json === 'object') {
-          setTaskOrder(orderRow.order_json as Record<string, string[]>);
-        } else {
-          const savedOrder = localStorage.getItem('taskOrder');
-          if (savedOrder) {
-            try {
-              const parsed = JSON.parse(savedOrder);
-              setTaskOrder(parsed);
-              await supabase.from('user_task_order').upsert(
-                { user_id: ANONYMOUS_USER_ID, order_json: parsed },
-                { onConflict: 'user_id' }
-              );
-            } catch (e) {
-              console.error('Failed to migrate taskOrder from local storage', e);
-            }
-          }
-        }
-        allowPersistTaskOrder.current = true;
-      } catch (err: any) {
-        console.error('Error in fetchData:', err);
-        allowPersistTaskOrder.current = true;
-      } finally {
-        setHasCompletedTimelineBootstrap(true);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
@@ -1986,7 +1261,6 @@ export default function App() {
   const handleStopTimer = async (elapsedSeconds: number) => {
     if (!activeTimerTask) return;
 
-    // Tylko sesje > 5 min — zapis jako zwykły tekst w pierwszym bloku „Praca” (pole notes), bez osobnego kafelka.
     if (elapsedSeconds > 300) {
       const durationMinutes = Math.ceil(elapsedSeconds / 60);
       const now = new Date();
@@ -2050,408 +1324,145 @@ export default function App() {
         />
       )}
       <Sidebar currentView={view} onViewChange={setView} />
-      
+
       <div className="flex-1 flex flex-col overflow-hidden">
         {!isSupabaseConfigured && (
           <div className="bg-amber-500 text-white px-4 py-1 text-center text-[10px] font-bold uppercase tracking-wider">
             Supabase nie jest skonfigurowany. Dane będą zapisywane tylko lokalnie.
           </div>
         )}
-        <header className="bg-white dark:bg-tp-canvas border-b border-slate-200 dark:border-white/6 flex-shrink-0 transition-colors">
-          <div className="px-8 h-16 flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {view === 'tasks' ? 'Zadania' : view === 'calendar' ? 'Kalendarz' : view === 'expected_payments' ? 'Przewidywana Wpłata' : view === 'payments_history' ? 'Historia wpłat' : view === 'rules' ? 'Zasady' : view === 'goals' ? 'Cele' : view === 'projects' ? 'Projekty' : 'Tryb Skupienia'}
-            </h1>
-            
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsMinimalView(!isMinimalView)}
-                  className={cn(
-                    "p-2 rounded-xl transition-colors",
-                    isMinimalView 
-                      ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400" 
-                      : "bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-tp-raised"
-                  )}
-                  title={isMinimalView ? "Widok standardowy" : "Widok minimalistyczny"}
-                >
-                  <List className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setIsDarkMode(!isDarkMode)}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-tp-raised transition-colors"
-                  title={isDarkMode ? "Przełącz na tryb jasny" : "Przełącz na tryb nocny"}
-                >
-                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
-              </div>
+        <AppHeader
+          view={view}
+          isMinimalView={isMinimalView}
+          setIsMinimalView={setIsMinimalView}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          paymentsMonth={paymentsMonth}
+          setPaymentsMonth={setPaymentsMonth}
+          tasksHeaderGrossRealized={sumGrossRealized}
+          tasksHeaderGrossTotal={sumGrossTotal}
+          expectedPaymentsCount={thisMonthPayments.length}
+          realizedThisMonthCount={realizedThisMonth.length}
+          sumNetTotal={sumNetTotal}
+          sumGrossTotal={sumGrossTotal}
+          sumNetRealized={sumNetRealized}
+          sumGrossRealized={sumGrossRealized}
+        />
 
-              {view === 'expected_payments' && (
-                <div className="flex items-center gap-4 text-sm bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-                  <div className="flex items-center gap-2 border-r border-indigo-200 dark:border-indigo-800 pr-4">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentsMonth(prev => subMonths(prev, 1))}
-                      className="p-1.5 rounded-lg text-indigo-700/80 dark:text-indigo-300/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-                      title="Poprzedni miesiąc"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <div className="font-semibold text-indigo-900 dark:text-indigo-300 capitalize">
-                      {format(paymentsMonth, 'MMMM yyyy', { locale: pl })}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentsMonth(prev => addMonths(prev, 1))}
-                      className="p-1.5 rounded-lg text-indigo-700/80 dark:text-indigo-300/80 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-                      title="Następny miesiąc"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex gap-8">
-                    <div className="flex flex-col text-xs">
-                      <span className="text-indigo-600/80 dark:text-indigo-400/80 font-medium uppercase tracking-tighter">Przewidywane Razem ({thisMonthPayments.length}):</span>
-                      <span className="font-bold text-indigo-700 dark:text-indigo-300">
-                        {sumNetTotal.toFixed(2)} <span className="font-normal opacity-70">netto</span> / {sumGrossTotal.toFixed(2)} <span className="font-normal opacity-70">brutto</span>
-                      </span>
-                    </div>
-                    <div className="flex flex-col text-xs">
-                      <span className="text-blue-600/80 dark:text-tp-accent/80 font-medium uppercase tracking-tighter">Zrealizowane ({realizedThisMonth.length}):</span>
-                      <span className="font-bold text-blue-700 dark:text-tp-accent">
-                        {sumNetRealized.toFixed(2)} <span className="font-normal opacity-70">netto</span> / {sumGrossRealized.toFixed(2)} <span className="font-normal opacity-70">brutto</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {view === 'tasks' && (
-                <div className="flex flex-col items-end">
-                  <div className="text-xl font-bold text-slate-800 dark:text-slate-200 capitalize leading-none">
-                    {format(new Date(), 'EEEE, d MMMM', { locale: pl })}
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-tighter mt-1">
-                    <span className="text-blue-600 dark:text-tp-accent">{sumGrossRealized.toFixed(2)}</span>
-                    <span className="text-slate-400">/</span>
-                    <span className="text-indigo-600 dark:text-indigo-400">{sumGrossTotal.toFixed(2)}</span>
-                    <span className="text-slate-400 ml-0.5">brutto</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className={cn("mx-auto h-full", (view === 'tasks' || view === 'focus' || view === 'rules' || view === 'goals' || view === 'projects') ? "max-w-7xl" : "max-w-3xl")}>
+        <main data-app-main className="flex-1 overflow-y-auto p-8 relative">
+          <div
+            className={cn(
+              'mx-auto h-full',
+              view === 'tasks' ||
+                view === 'focus' ||
+                view === 'rules' ||
+                view === 'goals' ||
+                view === 'projects'
+                ? 'max-w-7xl'
+                : 'max-w-3xl'
+            )}
+          >
             {(view === 'tasks' || view === 'focus') && (
               <div className="flex gap-8 h-full items-start">
-                <div className="flex-1 min-w-0 flex flex-col gap-6">
+                <div className="flex-1 min-w-0">
                   {view === 'tasks' && (
-                    <>
-                      <CalendarStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
-                      <div className="space-y-8">
-                        <DndContext
-                          sensors={sensors}
-                          collisionDetection={closestCenter}
-                          onDragOver={handleDragOver}
-                          onDragEnd={handleDragEnd}
-                        >
-                    {/* Today Section */}
-                    <div>
-                      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 shrink-0">
-                            Dzisiaj
-                          </h2>
-                          <div
-                            className="flex items-center gap-0.5 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-tp-muted/60 p-0.5"
-                            role="group"
-                            aria-label="Szybkie zadania na dziś"
-                          >
-                            {QUICK_TODAY_PRESETS.map(({ title, Icon, hint }) => (
-                              <button
-                                key={title}
-                                type="button"
-                                title={hint}
-                                onClick={() => void handleAddTask(title, 'medium', '', 'indigo', false)}
-                                className={cn(
-                                  'p-2 rounded-lg text-slate-500 dark:text-slate-400',
-                                  'hover:text-tp-accent hover:bg-white dark:hover:bg-tp-raised',
-                                  'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/50',
-                                )}
-                              >
-                                <Icon className="w-4 h-4" aria-hidden />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleMoveToQueue}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium shrink-0"
-                          title="Przenieś niezrobione do kolejki"
-                        >
-                          <Archive className="w-4 h-4" />
-                          <span>Do kolejki</span>
-                        </button>
-                      </div>
-                      <DroppableContainer id="today" className="min-h-[100px]">
-                        <SortableContext
-                          items={todayTasks.map(t => t.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {isMinimalView ? (
-                            <div className="bg-white dark:bg-tp-surface rounded-lg shadow-sm border border-slate-200 dark:border-white/6 p-4 font-mono">
-                              {todayTasks.map(task => (
-                                <SortableMinimalTaskItem
-                                  key={task.id}
-                                  task={task}
-                                  projects={projects}
-                                  onToggleComplete={handleToggleComplete}
-                                  onUpdateTask={handleUpdateTask}
-                                  onAddSubtask={handleAddSubtask}
-                                  onToggleSubtask={handleToggleSubtask}
-                                  onDeleteSubtask={handleDeleteSubtask}
-                                  onFocus={handleFocusTask}
-                                  onOpenProject={handleOpenProjectFromTask}
-                                  collapseSignal={collapseAllTasksSignal}
-                                />
-                              ))}
-                              {todayTasks.length === 0 && (
-                                <div className="text-slate-400 dark:text-slate-500 text-center py-4">Brak zadań na ten dzień.</div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {todayTasks.map(task => (
-                                <SortableTaskItem
-                                  key={task.id}
-                                  task={task}
-                                  projectColor={getProjectForTask(task)?.color || null}
-                                  projectEmoji={getProjectForTask(task)?.emoji || null}
-                                  linkedProjectId={getProjectForTask(task)?.id ?? null}
-                                  onOpenProject={handleOpenProjectFromTask}
-                                  onToggleComplete={handleToggleComplete}
-                                  onDelete={handleDelete}
-                                  onDeleteSeries={handleDeleteSeries}
-                                  onAddSubtask={handleAddSubtask}
-                                  onToggleSubtask={handleToggleSubtask}
-                                  onDeleteSubtask={handleDeleteSubtask}
-                                  onFocus={handleFocusTask}
-                                  onUpdateTask={handleUpdateTask}
-                                  collapseSignal={collapseAllTasksSignal}
-                                />
-                              ))}
-                              {todayTasks.length === 0 && (
-                                <div className="text-center py-8 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
-                                  <p className="text-slate-500 dark:text-slate-400 font-medium">Brak zadań na ten dzień.</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </SortableContext>
-                      </DroppableContainer>
-                    </div>
+                    <TasksWorkspace
+                      selectedDate={selectedDate}
+                      onSelectDate={setSelectedDate}
+                      isMinimalView={isMinimalView}
+                      queueSortMode={queueSortMode}
+                      setQueueSortMode={setQueueSortMode}
+                      todayTasks={todayTasks}
+                      queueTasks={queueTasks}
+                      projects={projects}
+                      collapseAllTasksSignal={collapseAllTasksSignal}
+                      onCollapseAllTasks={() => setCollapseAllTasksSignal(v => v + 1)}
+                      onMoveToQueue={handleMoveToQueue}
+                      onAddTask={handleAddTask}
+                      onCreateProjectFromTaskForm={createProjectFromTaskForm}
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onDelete={handleDelete}
+                      onDeleteSeries={handleDeleteSeries}
+                      onAddSubtask={handleAddSubtask}
+                      onToggleSubtask={handleToggleSubtask}
+                      onDeleteSubtask={handleDeleteSubtask}
+                      onFocusTask={handleFocusTask}
+                      onOpenProjectFromTask={handleOpenProjectFromTask}
+                      getProjectForTask={getProjectForTask}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
+                    />
+                  )}
 
-                    {/* Queue Section */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Kolejka</h2>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-lg p-0.5 border border-slate-200 dark:border-white/10">
-                            <button
-                              type="button"
-                              onClick={() => { setQueueSortMode('priority'); localStorage.setItem('queueSortMode', 'priority'); }}
-                              className={cn(
-                                "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
-                                queueSortMode === 'priority'
-                                  ? "bg-white dark:bg-tp-raised text-indigo-600 dark:text-tp-accent shadow-sm"
-                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                              )}
-                              title="Sortuj kolejkę według ważności"
-                            >
-                              Ważność
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setQueueSortMode('manual'); localStorage.setItem('queueSortMode', 'manual'); }}
-                              className={cn(
-                                "px-2 py-1 text-xs font-semibold rounded-md transition-colors",
-                                queueSortMode === 'manual'
-                                  ? "bg-white dark:bg-tp-raised text-indigo-600 dark:text-tp-accent shadow-sm"
-                                  : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                              )}
-                              title="Sortuj kolejkę ręcznie (przeciąganie)"
-                            >
-                              Ręcznie
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setCollapseAllTasksSignal(v => v + 1)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
-                            title="Zwiń wszystkie rozwinięte zadania"
-                          >
-                            Zwiń wszystko
-                          </button>
-                        </div>
-                      </div>
-                      <DroppableContainer id="queue" className="min-h-[100px]">
-                        <SortableContext
-                          items={queueTasks.map(t => t.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          {isMinimalView ? (
-                            <div className="bg-white dark:bg-tp-surface rounded-lg shadow-sm border border-slate-200 dark:border-white/6 p-4 font-mono">
-                              {queueTasks.map(task => (
-                                <SortableMinimalTaskItem
-                                  key={task.id}
-                                  task={task}
-                                  projects={projects}
-                                  onToggleComplete={handleToggleComplete}
-                                  onUpdateTask={handleUpdateTask}
-                                  onAddSubtask={handleAddSubtask}
-                                  onToggleSubtask={handleToggleSubtask}
-                                  onDeleteSubtask={handleDeleteSubtask}
-                                  onFocus={handleFocusTask}
-                                  onOpenProject={handleOpenProjectFromTask}
-                                  collapseSignal={collapseAllTasksSignal}
-                                />
-                              ))}
-                              {queueTasks.length === 0 && (
-                                <div className="text-slate-400 dark:text-slate-500 text-center py-4">Brak zadań w kolejce.</div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-3">
-                              {queueTasks.map(task => (
-                                <SortableTaskItem
-                                  key={task.id}
-                                  task={task}
-                                  projectColor={getProjectForTask(task)?.color || null}
-                                  projectEmoji={getProjectForTask(task)?.emoji || null}
-                                  linkedProjectId={getProjectForTask(task)?.id ?? null}
-                                  onOpenProject={handleOpenProjectFromTask}
-                                  onToggleComplete={handleToggleComplete}
-                                  onDelete={handleDelete}
-                                  onDeleteSeries={handleDeleteSeries}
-                                  onAddSubtask={handleAddSubtask}
-                                  onToggleSubtask={handleToggleSubtask}
-                                  onDeleteSubtask={handleDeleteSubtask}
-                                  onFocus={handleFocusTask}
-                                  onUpdateTask={handleUpdateTask}
-                                  collapseSignal={collapseAllTasksSignal}
-                                />
-                              ))}
-                              {queueTasks.length === 0 && (
-                                <div className="text-center py-8 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
-                                  <p className="text-slate-500 dark:text-slate-400 font-medium">Brak zadań w kolejce.</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </SortableContext>
-                      </DroppableContainer>
+                  {view === 'focus' && focusedTask && (
+                    <div className="flex flex-col gap-6 min-h-full pb-8">
+                      <FocusMode
+                        task={focusedTask}
+                        onBack={() => setView('tasks')}
+                        onUpdateTask={handleUpdateTask}
+                        onAddSubtask={handleAddSubtask}
+                        onToggleSubtask={handleToggleSubtask}
+                        onDeleteSubtask={handleDeleteSubtask}
+                      />
                     </div>
-                  </DndContext>
+                  )}
                 </div>
-                <div className="mt-6">
-                  <TaskForm onAdd={handleAddTask} projects={projects} onCreateProject={createProjectFromTaskForm} />
-                </div>
-              </>
-            )}
-
-            {view === 'focus' && focusedTask && (
-              <div className="flex flex-col gap-6 min-h-full pb-8">
-                <FocusMode
-                  task={focusedTask}
-                  onBack={() => setView('tasks')}
-                  onUpdateTask={handleUpdateTask}
-                  onAddSubtask={handleAddSubtask}
-                  onToggleSubtask={handleToggleSubtask}
-                  onDeleteSubtask={handleDeleteSubtask}
+                <DaySidePanel
+                  selectedDateStr={selectedDateStr}
+                  dailyNoteContent={dailyNotes[selectedDateStr] || ''}
+                  onSaveDailyNote={handleSaveDailyNote}
+                  dailyTimeline={dailyTimelines[selectedDateStr] || emptyDailyTimelineFallback}
+                  onSaveDailyTimeline={handleSaveDailyTimeline}
+                  workBlockDoneTasksForDay={workBlockDoneTasksForDay}
                 />
               </div>
             )}
-          </div>
 
-          <div className="w-[400px] flex-shrink-0">
-            <DailyNotePanel
-              date={selectedDateStr}
-              content={dailyNotes[selectedDateStr] || ''}
-              onChange={handleSaveDailyNote}
-            />
-            <DailyTimelineComponent
-              timeline={dailyTimelines[selectedDateStr] || emptyDailyTimelineFallback}
-              onUpdate={handleSaveDailyTimeline}
-              workBlockDoneTasks={workBlockDoneTasksForDay}
-            />
-          </div>
-        </div>
-      )}
+            {view === 'calendar' && (
+              <CalendarView
+                tasks={allTasks}
+                dailyNotes={dailyNotes}
+                onSaveDailyNote={handleSaveDailyNote}
+                dailyTimelines={dailyTimelines}
+                onSaveDailyTimeline={handleSaveDailyTimelineForDate}
+                projects={projects}
+              />
+            )}
 
-      {view === 'calendar' && (
-        <CalendarView
-          tasks={allTasks}
-          dailyNotes={dailyNotes}
-          onSaveDailyNote={handleSaveDailyNote}
-          dailyTimelines={dailyTimelines}
-          onSaveDailyTimeline={handleSaveDailyTimelineForDate}
-          projects={projects}
-        />
-      )}
+            {view === 'expected_payments' && (
+              <ExpectedPaymentsView
+                sortedPayments={sortedPayments}
+                projects={projects}
+                onAddPayment={handleAddPayment}
+                onTogglePaymentRealized={handleTogglePaymentRealized}
+                onDeletePayment={handleDeletePayment}
+              />
+            )}
 
-      {view === 'expected_payments' && (
-        <>
-          <PaymentForm onAdd={handleAddPayment} projects={projects} />
-          <div className="space-y-3 mt-6">
-            {sortedPayments.length === 0 ? (
-              <div className="text-center py-12 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Brak przewidywanych wpłat w tym miesiącu.</p>
-              </div>
-            ) : (
-              sortedPayments.map(payment => (
-                <PaymentItem
-                  key={payment.id}
-                  payment={payment}
-                  projectTitle={payment.project_id ? (projects.find(p => p.id === payment.project_id)?.title || null) : null}
-                  projectColor={payment.project_id ? (projects.find(p => p.id === payment.project_id)?.color || null) : null}
-                  onToggleRealized={handleTogglePaymentRealized}
-                  onDelete={handleDeletePayment}
-                />
-              ))
+            {view === 'payments_history' && (
+              <PaymentsHistoryView
+                payments={payments}
+                overrides={paymentMonthOverrides}
+                onUpsertOverride={handleUpsertPaymentMonthOverride}
+              />
+            )}
+
+            {view === 'rules' && <RulesView />}
+
+            {view === 'goals' && <GoalsView />}
+
+            {view === 'projects' && (
+              <ProjectsView
+                projects={projects}
+                setProjects={setProjects}
+                payments={payments}
+                openProjectId={openProjectTargetId}
+                onConsumedOpenProject={handleConsumedOpenProject}
+              />
             )}
           </div>
-        </>
-      )}
-
-      {view === 'payments_history' && (
-        <PaymentsHistoryView
-          payments={payments}
-          overrides={paymentMonthOverrides}
-          onUpsertOverride={handleUpsertPaymentMonthOverride}
-        />
-      )}
-
-      {view === 'rules' && (
-        <RulesView />
-      )}
-
-      {view === 'goals' && (
-        <GoalsView />
-      )}
-
-      {view === 'projects' && (
-        <ProjectsView
-          projects={projects}
-          setProjects={setProjects}
-          payments={payments}
-          openProjectId={openProjectTargetId}
-          onConsumedOpenProject={handleConsumedOpenProject}
-        />
-      )}
-    </div>
-  </main>
+        </main>
       </div>
     </div>
   );
