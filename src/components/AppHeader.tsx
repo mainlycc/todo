@@ -1,7 +1,8 @@
 import { addMonths, format, subMonths } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, Moon, RefreshCw, Sun } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
+import { formatUsdtPrice, useBybitSpotPrices } from '../hooks/useBybitSpotPrices';
 import type { ViewMode } from '../types';
 import { cn } from '../utils';
 
@@ -53,6 +54,8 @@ export function AppHeader({
   sumNetRealized,
   sumGrossRealized,
 }: AppHeaderProps) {
+  const bybit = useBybitSpotPrices();
+
   return (
     <header className="bg-white dark:bg-tp-canvas border-b border-slate-200 dark:border-white/6 flex-shrink-0 transition-colors">
       <div className="px-8 h-16 flex items-center justify-between">
@@ -61,6 +64,41 @@ export function AppHeader({
         </h1>
 
         <div className="flex items-center gap-6">
+          <div className="hidden sm:flex items-center gap-1">
+            <div className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-tp-muted border border-slate-200/80 dark:border-white/8 text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+              <span className="font-semibold text-amber-700/90 dark:text-amber-400/90">BTC/USDT</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium min-w-[4.5rem] text-right">
+                {bybit.loading && !bybit.btc ? '…' : formatUsdtPrice(bybit.btc)}
+              </span>
+              <span className="text-slate-300 dark:text-slate-600" aria-hidden>
+                |
+              </span>
+              <span className="font-semibold text-violet-700/90 dark:text-violet-400/90">ETH/USDT</span>
+              <span className="text-slate-900 dark:text-slate-100 font-medium min-w-[4.5rem] text-right">
+                {bybit.loading && !bybit.eth ? '…' : formatUsdtPrice(bybit.eth)}
+              </span>
+              {bybit.error && (
+                <span className="text-red-500 dark:text-red-400 text-[10px] normal-case" title="Bybit API">
+                  błąd
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => bybit.refresh()}
+              disabled={bybit.refreshing}
+              className={cn(
+                'p-1.5 rounded-xl border border-transparent transition-colors',
+                'text-slate-500 dark:text-slate-400',
+                'hover:bg-slate-100 dark:hover:bg-tp-raised hover:text-slate-800 dark:hover:text-slate-200',
+                'disabled:opacity-60 disabled:pointer-events-none'
+              )}
+              title="Odśwież ceny (Bybit)"
+              aria-label="Odśwież ceny BTC i ETH"
+            >
+              <RefreshCw className={cn('w-4 h-4', bybit.refreshing && 'animate-spin')} />
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMinimalView(!isMinimalView)}
