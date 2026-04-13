@@ -5,6 +5,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core';
 import { AppHeader } from './components/AppHeader';
 import { CalendarView } from './components/CalendarView';
+import { ClientsView } from './components/ClientsView';
 import { DaySidePanel } from './components/DaySidePanel';
 import { ExpectedPaymentsView } from './components/ExpectedPaymentsView';
 import { FocusMode } from './components/FocusMode';
@@ -1357,7 +1358,8 @@ export default function App() {
                 view === 'focus' ||
                 view === 'rules' ||
                 view === 'goals' ||
-                view === 'projects'
+                view === 'projects' ||
+                view === 'clients'
                 ? 'max-w-7xl'
                 : 'max-w-3xl'
             )}
@@ -1461,6 +1463,8 @@ export default function App() {
                 onConsumedOpenProject={handleConsumedOpenProject}
               />
             )}
+
+            {view === 'clients' && <ClientsView />}
           </div>
         </main>
       </div>

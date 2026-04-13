@@ -138,24 +138,24 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
         </div>
 
         {isExpanded && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all">
-            <div className="min-w-0">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 transition-all">
+            <div className="min-w-0 md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">
                 Termin
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <input
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   disabled={isRecurring}
-                  className="w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white disabled:opacity-50"
+                  className="min-w-0 flex-1 basis-[11rem] max-w-full text-sm rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-slate-50 dark:bg-tp-muted text-slate-900 dark:text-white disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={handleSetToday}
                   disabled={isRecurring}
-                  className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 font-medium bg-white dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-tp-raised transition-colors disabled:opacity-50 whitespace-nowrap"
+                  className="shrink-0 text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 font-medium bg-white dark:bg-tp-muted text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-tp-raised transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   Dzisiaj
                 </button>
@@ -245,7 +245,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
               )}
             </div>
 
-            <div className="min-w-0 lg:col-span-2">
+            <div className="min-w-0 md:col-span-2">
               <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
                 Kolor
               </label>
@@ -290,7 +290,7 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
               </div>
             </div>
 
-            <div className="sm:col-span-2 lg:col-span-4 mt-2 pt-4 border-t border-slate-100 dark:border-white/6">
+            <div className="col-span-full mt-2 pt-4 border-t border-slate-100 dark:border-white/6">
               <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer w-fit hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                 <input
                   type="checkbox"

@@ -1,5 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Target, Info, Plus, Trash2, CheckCircle2, Circle, ChevronDown, ChevronUp, Save, X, Edit2 } from 'lucide-react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Target,
+  Info,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  Circle,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  Edit2,
+  FileText,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import {
+  createRichNoteExtensions,
+  RICH_NOTE_EDITOR_CONTENT_CLASS,
+  RichNoteFormattingMenuBar,
+} from './richNoteEditor';
+import { readExpandOverlayLayout } from '../lib/expandNoteOverlayLayout';
 import { Goal, Subtask } from '../types';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
@@ -38,6 +60,7 @@ export function GoalsView() {
             user_id: row.user_id,
             title: row.title,
             description: row.description || '',
+            notes: row.notes || '',
             subtasks: (row.subtasks as Subtask[]) || [],
             completed: row.completed,
             created_at: row.created_at,
@@ -60,6 +83,7 @@ export function GoalsView() {
                   user_id: ANONYMOUS_USER_ID,
                   title: g.title,
                   description: g.description ?? '',
+                  notes: g.notes ?? '',
                   subtasks: g.subtasks || [],
                   completed: g.completed,
                   created_at: g.created_at,
@@ -86,6 +110,7 @@ export function GoalsView() {
         user_id: ANONYMOUS_USER_ID,
         title: g.title,
         description: g.description ?? '',
+        notes: g.notes ?? '',
         subtasks: g.subtasks || [],
         completed: g.completed,
         created_at: g.created_at,
@@ -103,6 +128,7 @@ export function GoalsView() {
       user_id: ANONYMOUS_USER_ID,
       title: newGoalTitle.trim(),
       description: '',
+      notes: '',
       subtasks: [],
       completed: false,
       created_at: new Date().toISOString(),
@@ -236,6 +262,159 @@ export function GoalsView() {
   );
 }
 
+function GoalNotesBlock({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void }) {
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [notesOverlayLayout, setNotesOverlayLayout] = useState(() => readExpandOverlayLayout());
+
+  const editor = useEditor({
+    extensions: createRichNoteExtensions('Luźne notatki, linki, pomysły przy tym celu…'),
+    content: goal.notes || '',
+    editorProps: {
+      attributes: {
+        class: RICH_NOTE_EDITOR_CONTENT_CLASS,
+      },
+    },
+    onUpdate: ({ editor: ed }) => {
+      let html = ed.getHTML();
+      if (ed.isEmpty) html = '';
+      onUpdate({ ...goal, notes: html });
+    },
+  });
+
+  useEffect(() => {
+    if (editor && editor.getHTML() !== (goal.notes || '')) {
+      editor.commands.setContent(goal.notes || '');
+    }
+  }, [goal.notes, editor]);
+
+  useLayoutEffect(() => {
+    if (!notesExpanded) return;
+    const updateLayout = () => setNotesOverlayLayout(readExpandOverlayLayout());
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    const ro = new ResizeObserver(updateLayout);
+    const main = document.querySelector('[data-app-main]');
+    const sidebar = document.querySelector('[data-app-sidebar]');
+    if (main) ro.observe(main);
+    if (sidebar) ro.observe(sidebar);
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+      ro.disconnect();
+    };
+  }, [notesExpanded]);
+
+  useEffect(() => {
+    if (!notesExpanded) return;
+    const main = document.querySelector('[data-app-main]');
+    const prevOverflow = main instanceof HTMLElement ? main.style.overflow : '';
+    if (main instanceof HTMLElement) main.style.overflow = 'hidden';
+    return () => {
+      if (main instanceof HTMLElement) main.style.overflow = prevOverflow;
+    };
+  }, [notesExpanded]);
+
+  useEffect(() => {
+    if (!notesExpanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNotesExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [notesExpanded]);
+
+  const goalNoteEditorSection = (
+    <>
+      <RichNoteFormattingMenuBar editor={editor} clockMode="date" />
+      <div
+        className={cn(
+          'flex-1 overflow-y-auto custom-scrollbar cursor-text min-h-0',
+          notesExpanded ? 'px-2 pt-1' : '',
+        )}
+        onClick={() => editor?.commands.focus()}
+      >
+        <EditorContent
+          editor={editor}
+          className={cn('h-full text-sm', notesExpanded && 'min-h-[min(70vh,520px)]')}
+        />
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="space-y-3 flex flex-col min-h-[240px]">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            Notatki
+          </label>
+          {!notesExpanded && (
+            <button
+              type="button"
+              onClick={() => setNotesExpanded(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-tp-muted hover:bg-slate-200 dark:hover:bg-tp-raised border border-slate-200/80 dark:border-white/10 transition-colors shrink-0"
+              title="Rozwiń notatkę na obszar obok menu i nagłówka"
+            >
+              <Maximize2 className="w-3.5 h-3.5" aria-hidden />
+              Na cały obszar
+            </button>
+          )}
+        </div>
+        {!notesExpanded ? (
+          <div className="flex-1 bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/6 rounded-2xl overflow-hidden shadow-sm flex flex-col p-4 min-h-[200px]">
+            {goalNoteEditorSection}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 py-2 text-sm text-slate-600 dark:text-slate-400">
+            <p>Edytujesz w rozszerzonym oknie obok (sidebar i pasek u góry pozostają widoczne).</p>
+            <button
+              type="button"
+              onClick={() => setNotesExpanded(false)}
+              className="inline-flex items-center justify-center gap-2 self-start px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-tp-muted hover:bg-slate-200 dark:hover:bg-tp-raised border border-slate-200 dark:border-white/10 transition-colors"
+            >
+              <Minimize2 className="w-4 h-4" aria-hidden />
+              Wróć do podglądu
+            </button>
+          </div>
+        )}
+      </div>
+
+      {notesExpanded &&
+        createPortal(
+          <div
+            className="fixed z-[90] flex flex-col bg-slate-50 dark:bg-tp-canvas border-l border-slate-200 dark:border-white/10 shadow-xl"
+            style={{
+              top: notesOverlayLayout.top,
+              left: notesOverlayLayout.left,
+              right: 0,
+              bottom: 0,
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Notatki celu — rozszerzony widok: ${goal.title}`}
+          >
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-tp-surface shrink-0">
+              <div className="flex items-center gap-2 min-w-0 text-slate-800 dark:text-white">
+                <FileText className="w-5 h-5 text-indigo-500 dark:text-tp-accent shrink-0" />
+                <h2 className="font-semibold truncate">Notatki — {goal.title}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNotesExpanded(false)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-tp-muted hover:bg-slate-200 dark:hover:bg-tp-raised border border-slate-200 dark:border-white/10 transition-colors shrink-0"
+                title="Wróć do wąskiego podglądu w panelu"
+              >
+                <Minimize2 className="w-4 h-4" aria-hidden />
+                Wróć do podglądu
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col min-h-0 p-4 pt-2">{goalNoteEditorSection}</div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
 function GoalItem({
   goal,
   isExpanded,
@@ -349,6 +528,8 @@ function GoalItem({
               </p>
             )}
           </div>
+
+          <GoalNotesBlock goal={goal} onUpdate={onUpdate} />
 
           <div className="space-y-3">
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Kroki do celu (Podzadania)</label>

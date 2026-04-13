@@ -70,6 +70,8 @@ export interface Goal {
   user_id: string;
   title: string;
   description?: string;
+  /** Bogata notatka (HTML z TipTap), jak w projektach */
+  notes?: string;
   subtasks: Subtask[];
   completed: boolean;
   created_at: string;
@@ -131,4 +133,23 @@ export interface DailyTimeline {
   events: DailyTimelineEvent[];
 }
 
-export type ViewMode = 'tasks' | 'calendar' | 'expected_payments' | 'payments_history' | 'focus' | 'rules' | 'goals' | 'projects';
+export type ViewMode =
+  | 'tasks'
+  | 'calendar'
+  | 'expected_payments'
+  | 'payments_history'
+  | 'focus'
+  | 'rules'
+  | 'goals'
+  | 'projects'
+  | 'clients';
+
+/** Wiersz kopii bazy klientów z Notion (Supabase: notion_clients). */
+export interface NotionClientRow {
+  notion_page_id: string;
+  user_id: string;
+  title: string;
+  notion_properties: Record<string, unknown>;
+  last_edited_time: string | null;
+  synced_at: string;
+}

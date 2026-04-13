@@ -1,5 +1,16 @@
 import { useState, useEffect } from 'react';
-import { CheckSquare, Wallet, Landmark, CalendarDays, ChevronLeft, ChevronRight, ShieldCheck, Target, Briefcase } from 'lucide-react';
+import {
+  CheckSquare,
+  Wallet,
+  Landmark,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
+  Target,
+  Briefcase,
+  Users,
+} from 'lucide-react';
 import { ViewMode } from '../types';
 import { cn } from '../utils';
 
@@ -26,6 +37,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'expected_payments', label: 'Przewidywana wpłata', icon: Wallet },
     { id: 'payments_history', label: 'Historia wpłat', icon: Landmark },
     { id: 'projects', label: 'Projekty', icon: Briefcase },
+    { id: 'clients', label: 'Klienci', icon: Users },
     { id: 'goals', label: 'Cele', icon: Target },
     { id: 'rules', label: 'Zasady', icon: ShieldCheck },
   ] as const;

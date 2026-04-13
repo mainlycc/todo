@@ -14,6 +14,7 @@ const viewTitles: Record<ViewMode, string> = {
   rules: 'Zasady',
   goals: 'Cele',
   projects: 'Projekty',
+  clients: 'Klienci',
   focus: 'Tryb Skupienia',
 };
 

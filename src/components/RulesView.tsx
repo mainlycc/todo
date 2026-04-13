@@ -74,10 +74,10 @@ function RuleEditor({ initialContent, onSave, onCancel }: { initialContent: stri
   });
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex flex-col">
       <MenuBar editor={editor} />
-      <div className="flex-1 overflow-y-auto cursor-text" onClick={() => editor?.commands.focus()}>
-        <EditorContent editor={editor} className="h-full" />
+      <div className="cursor-text" onClick={() => editor?.commands.focus()}>
+        <EditorContent editor={editor} />
       </div>
       <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-white/6">
         <button onClick={onCancel} className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-xl transition-colors font-medium">
@@ -271,10 +271,10 @@ export function RulesView() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="flex-1 overflow-y-auto pb-8 min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
           {editingId === 'new' && (
-            <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px] animate-in fade-in zoom-in duration-200">
+            <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col min-h-[280px] animate-in fade-in zoom-in duration-200">
               <input
                 type="text"
                 value={editTitle}
@@ -289,7 +289,7 @@ export function RulesView() {
 
           {cards.map((card) =>
             editingId === card.id ? (
-              <div key={card.id} className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col h-[380px]">
+              <div key={card.id} className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 shadow-lg p-5 flex flex-col min-h-[280px]">
                 <input
                   type="text"
                   value={editTitle}
@@ -302,7 +302,7 @@ export function RulesView() {
             ) : (
               <div
                 key={card.id}
-                className="relative bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-sm p-5 flex flex-col h-[380px] group hover:shadow-md transition-shadow"
+                className="relative bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-sm p-5 flex flex-col group hover:shadow-md transition-shadow"
               >
                 {deletingId === card.id && (
                   <div className="absolute inset-0 bg-white/95 dark:bg-tp-surface/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 z-10">
@@ -340,7 +340,7 @@ export function RulesView() {
                   </div>
                 </div>
                 <div
-                  className="flex-1 overflow-y-auto pr-2 custom-scrollbar prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-1 prose-li:my-0 text-slate-700 dark:text-slate-300 text-[13px]"
+                  className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:mt-4 prose-headings:mb-2 prose-ul:my-1 prose-li:my-0 text-slate-700 dark:text-slate-300 text-[13px]"
                   dangerouslySetInnerHTML={{ __html: card.content }}
                 />
               </div>
