@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Plus, MoreVertical, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2, Briefcase } from 'lucide-react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { Sun, Moon, MoreVertical, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2, Briefcase } from 'lucide-react';
 import { DailyTimeline as DailyTimelineData, DailyTimelineEvent } from '../types';
 import { cn } from '../utils';
 
@@ -92,6 +92,9 @@ const isWorkBlockEvent = (ev: DailyTimelineEvent) =>
 
 export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate, workBlockDoneTasks = [] }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [addMenu, setAddMenu] = useState<null | { timeStr: string; topPx: number }>(null);
+  const [customTitle, setCustomTitle] = useState('');
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
   const [resizingEventId, setResizingEventId] = useState<string | null>(null);
   const [resizeEdge, setResizeEdge] = useState<'top' | 'bottom' | null>(null);
   const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
@@ -125,7 +128,36 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
   );
   const firstWorkBlockEventId = normalizedEvents.find(isWorkBlockEvent)?.id;
 
-  const addTemplateEvent = (tpl: (typeof DEFAULT_TEMPLATES)[number]) => {
+  const templateIcons = useMemo(() => {
+    return {
+      work: Briefcase,
+      gym: Dumbbell,
+      chill: Sun,
+      nap: Moon,
+      procrastination: Clock,
+    } satisfies Record<(typeof DEFAULT_TEMPLATES)[number]['id'], React.ComponentType<{ className?: string }>>;
+  }, []);
+
+  const ensureTimeline = (): DailyTimelineData => {
+    return timeline || {
+      id: generateId(),
+      user_id: '',
+      date: '',
+      wake_up_time: '',
+      sleep_time: '',
+      events: [],
+    };
+  };
+
+  const addEventAtTime = (ev: Omit<DailyTimelineEvent, 'id' | 'time'> & { time: string }) => {
+    const base = ensureTimeline();
+    onUpdate({
+      ...base,
+      events: [...(base.events || []), { ...ev, id: generateId() }],
+    });
+  };
+
+  const addTemplateEvent = (tpl: (typeof DEFAULT_TEMPLATES)[number], timeStr?: string) => {
     const updatedTimeline: DailyTimelineData = timeline || {
       id: generateId(),
       user_id: '',
@@ -135,23 +167,27 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
       events: [],
     };
 
-    const targetMinutes =
-      tpl.id === 'gym'
-        ? (15 * 60)
-        : (() => {
-            const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-            return Math.round(nowMinutes / SNAP_MINUTES) * SNAP_MINUTES;
-          })();
-    const h = Math.floor(targetMinutes / 60) % 24;
-    const m = targetMinutes % 60;
-    const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    const resolvedTimeStr =
+      timeStr ||
+      (() => {
+        const targetMinutes =
+          tpl.id === 'gym'
+            ? (15 * 60)
+            : (() => {
+                const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+                return Math.round(nowMinutes / SNAP_MINUTES) * SNAP_MINUTES;
+              })();
+        const h = Math.floor(targetMinutes / 60) % 24;
+        const m = targetMinutes % 60;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      })();
 
     const newEvent: DailyTimelineEvent =
       tpl.id === 'nap'
         ? {
             id: generateId(),
             type: 'nap',
-            time: timeStr,
+            time: resolvedTimeStr,
             title: tpl.title,
             duration: tpl.duration,
             color: SLEEP_COLOR,
@@ -159,7 +195,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
         : {
             id: generateId(),
             type: 'other',
-            time: timeStr,
+            time: resolvedTimeStr,
             title: tpl.title,
             duration: tpl.duration,
             color: tpl.color,
@@ -170,6 +206,25 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
       events: [...(updatedTimeline.events || []), newEvent],
     });
   };
+
+  useEffect(() => {
+    if (!addMenu) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAddMenu(null);
+    };
+    const onMouseDown = (e: MouseEvent) => {
+      const el = addMenuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setAddMenu(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('mousedown', onMouseDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [addMenu]);
 
   const sleepStartMin = parseTimeToMinutes(timeline?.sleep_time);
   const wakeUpMin = parseTimeToMinutes(timeline?.wake_up_time);
@@ -389,6 +444,7 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {DEFAULT_TEMPLATES.map(tpl => {
           const colorCfg = COLORS.find(c => c.value === tpl.color) || COLORS[0];
+          const Icon = templateIcons[tpl.id];
           return (
             <button
               key={tpl.id}
@@ -400,14 +456,19 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
               )}
               title={`Dodaj: ${tpl.title} (start: teraz, ${tpl.duration} min)`}
             >
-              {tpl.id === 'nap' ? (
-                <span
-                  className="inline-block w-2 h-2 rounded-full mr-2 align-middle border border-white/30 dark:border-white/10"
-                  style={{ backgroundColor: SLEEP_COLOR }}
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center w-5 h-5 rounded-lg mr-2 align-middle border",
+                  "border-slate-200/80 dark:border-white/10",
+                  tpl.id === 'nap' ? "" : colorCfg.bg.replace('bg-', 'bg-opacity-10 bg-')
+                )}
+                style={tpl.id === 'nap' ? { backgroundColor: withAlpha(SLEEP_COLOR, 0.12), borderColor: withAlpha(SLEEP_COLOR, 0.28) } : undefined}
+              >
+                <Icon
+                  className="w-3.5 h-3.5"
+                  style={tpl.id === 'nap' ? { color: SLEEP_COLOR } : undefined}
                 />
-              ) : (
-                <span className={cn("inline-block w-2 h-2 rounded-full mr-2 align-middle", colorCfg.bg)} />
-              )}
+              </span>
               <span className="align-middle">{tpl.label}</span>
             </button>
           );
@@ -485,26 +546,14 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
               </div>
               <div className="flex-1 h-full flex items-center">
                 <button 
-                  onClick={() => {
-                    const updatedTimeline: DailyTimelineData = timeline || {
-                      id: generateId(),
-                      user_id: '',
-                      date: '',
-                      wake_up_time: '',
-                      sleep_time: '',
-                      events: []
-                    };
-                    onUpdate({
-                      ...updatedTimeline,
-                      events: [...updatedTimeline.events, {
-                        id: generateId(),
-                        time: timeStr,
-                        title: 'Nowa czynność',
-                        type: 'other',
-                        duration: 60,
-                        color: 'indigo'
-                      }]
-                    });
+                  onClick={(e) => {
+                    const timelineElement = document.getElementById('timeline-grid');
+                    const rect = timelineElement?.getBoundingClientRect();
+                    const relativeY = rect ? (e.clientY - rect.top) : (hour * ROW_HEIGHT);
+                    // lekki offset, żeby menu nie zasłaniało klikniętego wiersza
+                    const topPx = Math.max(8, Math.min((24 * ROW_HEIGHT) - 8, Math.round(relativeY + 8)));
+                    setCustomTitle('');
+                    setAddMenu({ timeStr, topPx });
                   }}
                   className="w-full h-full text-left text-slate-300 dark:text-slate-700 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
                 >
@@ -514,6 +563,113 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
             </div>
           );
         })}
+
+        {/* Add menu (templates + custom) */}
+        {addMenu && (
+          <div
+            ref={addMenuRef}
+            className={cn(
+              "absolute left-[68px] z-[60] w-[min(420px,calc(100%-76px))]",
+              "rounded-2xl border border-slate-200 dark:border-white/10",
+              "bg-white/95 dark:bg-tp-surface/95 backdrop-blur-md shadow-xl"
+            )}
+            style={{ top: `${addMenu.topPx}px` }}
+          >
+            <div className="p-2.5 space-y-2.5">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 flex items-center justify-between gap-2">
+                  Szablony
+                  <button
+                    type="button"
+                    onClick={() => setAddMenu(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-tp-muted transition-colors"
+                    title="Zamknij (Esc)"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {DEFAULT_TEMPLATES.map(tpl => {
+                    const colorCfg = COLORS.find(c => c.value === tpl.color) || COLORS[0];
+                    const Icon = templateIcons[tpl.id];
+                    return (
+                      <button
+                        key={`menu-tpl-${tpl.id}`}
+                        type="button"
+                        onClick={() => {
+                          addTemplateEvent(tpl, addMenu.timeStr);
+                          setAddMenu(null);
+                        }}
+                        className={cn(
+                          "px-2 py-1.5 rounded-xl border transition-all hover:translate-y-[-1px] hover:shadow-sm",
+                          "bg-white dark:bg-tp-surface border-slate-200 dark:border-white/10",
+                          "flex items-center gap-2"
+                        )}
+                        title={`${tpl.title} • ${tpl.duration} min`}
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center w-6 h-6 rounded-lg border",
+                            "border-slate-200/70 dark:border-white/10",
+                            tpl.id === 'nap' ? "" : colorCfg.bg.replace('bg-', 'bg-opacity-10 bg-')
+                          )}
+                          style={tpl.id === 'nap' ? { backgroundColor: withAlpha(SLEEP_COLOR, 0.12), borderColor: withAlpha(SLEEP_COLOR, 0.28) } : undefined}
+                        >
+                          <Icon
+                            className="w-3.5 h-3.5"
+                            style={tpl.id === 'nap' ? { color: SLEEP_COLOR } : undefined}
+                          />
+                        </span>
+                        <span className="text-[11px] font-black text-slate-900 dark:text-white leading-none">{tpl.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-slate-50/80 dark:bg-black/10 p-2.5">
+                <div className="grid grid-cols-1 gap-2">
+                  <input
+                    type="text"
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="np. Call / Deep work / Zakupy…"
+                    className="w-full text-[13px] rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:ring-1 focus:ring-indigo-500 bg-white dark:bg-tp-surface text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddMenu(null)}
+                    className="px-3 py-2 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white/70 dark:hover:bg-tp-muted/40 transition-colors"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!customTitle.trim()}
+                    onClick={() => {
+                      const title = customTitle.trim();
+                      if (!title) return;
+                      addEventAtTime({
+                        type: 'other',
+                        time: addMenu.timeStr,
+                        title,
+                        duration: 60,
+                        color: 'indigo',
+                      });
+                      setAddMenu(null);
+                      setCustomTitle('');
+                    }}
+                    className="px-3 py-2 rounded-2xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 transition-colors shadow-sm"
+                  >
+                    Dodaj
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Events Overlay */}
         {normalizedEvents.map((event) => {

@@ -11,7 +11,38 @@ interface RuleCard {
   id: string;
   title: string;
   content: string;
+  color?: string;
 }
+
+const COLORS = [
+  '#ef4444', // Red 500
+  '#f97316', // Orange 500
+  '#f59e0b', // Amber 500
+  '#eab308', // Yellow 500
+  '#84cc16', // Lime 500
+  '#22c55e', // Green 500
+  '#10b981', // Emerald 500
+  '#06b6d4', // Cyan 500
+  '#0ea5e9', // Sky 500
+  '#3b82f6', // Blue 500
+  '#6366f1', // Indigo 500
+  '#8b5cf6', // Violet 500
+  '#a855f7', // Purple 500
+  '#d946ef', // Fuchsia 500
+  '#ec4899', // Pink 500
+  '#f43f5e', // Rose 500
+];
+
+const isHexColor = (value: string | undefined): value is string => {
+  if (!value) return false;
+  return /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(value);
+};
+
+const withAlpha = (hex: string, alpha01: number) => {
+  const a = Math.max(0, Math.min(1, alpha01));
+  const alphaHex = Math.round(a * 255).toString(16).padStart(2, '0');
+  return hex.length === 9 ? `${hex.slice(0, 7)}${alphaHex}` : `${hex}${alphaHex}`;
+};
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -109,17 +140,31 @@ function migratePlainContent(card: RuleCard): RuleCard {
 async function persistRuleCards(cards: RuleCard[]) {
   for (let i = 0; i < cards.length; i++) {
     const c = cards[i];
-    const { error } = await supabase.from('rule_cards').upsert(
-      {
-        id: c.id,
-        user_id: ANONYMOUS_USER_ID,
-        title: c.title,
-        content: c.content,
-        position: i,
-      },
-      { onConflict: 'id' }
-    );
-    if (error) console.error('Error saving rule card:', error);
+    const payloadBase: any = {
+      id: c.id,
+      user_id: ANONYMOUS_USER_ID,
+      title: c.title,
+      content: c.content,
+      position: i,
+    };
+    const payloadWithColor = isHexColor(c.color) ? { ...payloadBase, color: c.color } : payloadBase;
+
+    const { error } = await supabase.from('rule_cards').upsert(payloadWithColor, { onConflict: 'id' });
+    if (!error) continue;
+
+    // Fallback: jeśli w DB nie ma jeszcze kolumny `color`, spróbuj bez niej.
+    const msg = String((error as any)?.message || '');
+    const looksLikeMissingColorColumn =
+      payloadWithColor !== payloadBase &&
+      (msg.toLowerCase().includes('color') &&
+        (msg.toLowerCase().includes('column') || msg.toLowerCase().includes('schema') || msg.toLowerCase().includes('field')));
+
+    if (looksLikeMissingColorColumn) {
+      const retry = await supabase.from('rule_cards').upsert(payloadBase, { onConflict: 'id' });
+      if (retry.error) console.error('Error saving rule card (retry without color):', retry.error);
+    } else {
+      console.error('Error saving rule card:', error);
+    }
   }
 }
 
@@ -131,6 +176,7 @@ export function RulesView() {
 
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
+  const [editColor, setEditColor] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
@@ -154,6 +200,7 @@ export function RulesView() {
             id: row.id,
             title: row.title,
             content: row.content,
+            color: typeof row.color === 'string' ? row.color : undefined,
           }))
         );
         setLoaded(true);
@@ -175,7 +222,14 @@ export function RulesView() {
 
       const oldRules = localStorage.getItem('work_rules');
       if (oldRules) {
-        const initial = [{ id: '1', title: 'Ogólne zasady', content: oldRules.includes('<p>') ? oldRules : `<p>${oldRules}</p>` }];
+        const initial = [
+          {
+            id: '1',
+            title: 'Ogólne zasady',
+            content: oldRules.includes('<p>') ? oldRules : `<p>${oldRules}</p>`,
+            color: '#6366f1',
+          },
+        ];
         setCards(initial);
         await persistRuleCards(initial);
         setLoaded(true);
@@ -187,11 +241,13 @@ export function RulesView() {
           id: '1',
           title: 'Zasady Dnia',
           content: '<p>1. Zawsze planuj dzień rano</p><p>2. Najważniejsze zadania jako pierwsze</p><p>3. Rób regularne przerwy</p>',
+          color: '#6366f1',
         },
         {
           id: '2',
           title: 'Praca z Klientem',
           content: '<p>1. Odpowiadaj w ciągu 24h</p><p>2. Bądź zawsze uprzejmy i profesjonalny</p><p>3. Ustalaj jasne terminy</p>',
+          color: '#f59e0b',
         },
       ];
       setCards(defaults);
@@ -212,6 +268,7 @@ export function RulesView() {
     setEditingId(card.id);
     setEditTitle(card.title);
     setEditContent(card.content);
+    setEditColor(card.color || '');
     setDeletingId(null);
   };
 
@@ -222,10 +279,20 @@ export function RulesView() {
         id: Date.now().toString(),
         title: editTitle.trim() || 'Nowa Karta',
         content: finalContent,
+        color: isHexColor(editColor) ? editColor : COLORS[Math.floor(Math.random() * COLORS.length)],
       };
       await saveCards([newCard, ...cards]);
     } else {
-      const updatedCards = cards.map((c) => (c.id === id ? { ...c, title: editTitle.trim() || 'Bez tytułu', content: finalContent } : c));
+      const updatedCards = cards.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              title: editTitle.trim() || 'Bez tytułu',
+              content: finalContent,
+              color: isHexColor(editColor) ? editColor : c.color,
+            }
+          : c
+      );
       await saveCards(updatedCards);
     }
     setEditingId(null);
@@ -243,6 +310,7 @@ export function RulesView() {
     setEditingId('new');
     setEditTitle('');
     setEditContent('');
+    setEditColor(COLORS[Math.floor(Math.random() * COLORS.length)]);
     setDeletingId(null);
   };
 
@@ -283,6 +351,33 @@ export function RulesView() {
                 className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-white/10 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
                 autoFocus
               />
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mr-1">
+                  Kolor
+                </div>
+                {COLORS.map((c) => (
+                  <button
+                    key={`new-color-${c}`}
+                    type="button"
+                    onClick={() => setEditColor(c)}
+                    className={`w-6 h-6 rounded-full transition-transform hover:scale-110 ${
+                      editColor === c ? 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900 scale-110' : ''
+                    }`}
+                    style={{ backgroundColor: c }}
+                    title={c}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setEditColor('')}
+                  className={`w-6 h-6 rounded-full border-2 border-dashed border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ${
+                    !editColor ? 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900' : ''
+                  }`}
+                  title="Brak / domyślny"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <RuleEditor initialContent="" onSave={(content) => handleSave('new', content)} onCancel={() => setEditingId(null)} />
             </div>
           )}
@@ -297,12 +392,47 @@ export function RulesView() {
                   placeholder="Tytuł (np. Zasady dnia)"
                   className="text-base font-bold bg-transparent border-b border-slate-200 dark:border-white/10 pb-2 mb-3 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
                 />
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mr-1">
+                    Kolor
+                  </div>
+                  {COLORS.map((c) => (
+                    <button
+                      key={`edit-color-${card.id}-${c}`}
+                      type="button"
+                      onClick={() => setEditColor(c)}
+                      className={`w-6 h-6 rounded-full transition-transform hover:scale-110 ${
+                        editColor === c ? 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900 scale-110' : ''
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setEditColor('')}
+                    className={`w-6 h-6 rounded-full border-2 border-dashed border-slate-300 dark:border-white/15 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors ${
+                      !editColor ? 'ring-2 ring-offset-2 ring-indigo-500 dark:ring-offset-slate-900' : ''
+                    }`}
+                    title="Brak / domyślny"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
                 <RuleEditor initialContent={card.content} onSave={(content) => handleSave(card.id, content)} onCancel={() => setEditingId(null)} />
               </div>
             ) : (
               <div
                 key={card.id}
                 className="relative bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-sm p-5 flex flex-col group hover:shadow-md transition-shadow"
+                style={
+                  isHexColor(card.color)
+                    ? {
+                        backgroundColor: withAlpha(card.color, 0.08),
+                        borderColor: withAlpha(card.color, 0.35),
+                      }
+                    : undefined
+                }
               >
                 {deletingId === card.id && (
                   <div className="absolute inset-0 bg-white/95 dark:bg-tp-surface/95 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 z-10">
@@ -321,7 +451,18 @@ export function RulesView() {
                 )}
 
                 <div className="flex justify-between items-start mb-3 pb-3 border-b border-slate-100 dark:border-white/6">
-                  <h3 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-wide">{card.title}</h3>
+                  <div className="flex items-start gap-2 min-w-0">
+                    {isHexColor(card.color) && (
+                      <div
+                        className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 border border-black/10 dark:border-white/10"
+                        style={{ backgroundColor: card.color }}
+                        aria-hidden
+                      />
+                    )}
+                    <h3 className="text-sm font-bold uppercase tracking-wide min-w-0 truncate text-slate-900 dark:text-slate-100">
+                      {card.title}
+                    </h3>
+                  </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => handleEdit(card)}

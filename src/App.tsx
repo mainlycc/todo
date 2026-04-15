@@ -614,6 +614,8 @@ export default function App() {
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: 'own',
       deadline: null,
+      client_name: null,
+      client_notion_page_id: null,
       priority: 'medium',
       turn: 'mine',
     };

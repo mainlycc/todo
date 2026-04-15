@@ -20,7 +20,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react';
-import { Payment, Project, ProjectTask, KanbanStatus, Priority, ProjectTurn } from '../types';
+import { Payment, Project, ProjectTask, KanbanStatus, Priority, ProjectTurn, NotionClientRow } from '../types';
 import { cn } from '../utils';
 import { ProjectTurnGlyph } from './ProjectTurnVisual';
 import EmojiPicker, { EmojiClickData, Theme } from 'emoji-picker-react';
@@ -54,6 +54,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { ANONYMOUS_USER_ID } from '../constants';
+import { getNotionStatusLabel, matchesInProgressStatus } from '../lib/notionClientStatusFilter';
 
 interface ProjectsViewProps {
   projects: Project[];
@@ -135,6 +136,8 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
       created_at: new Date().toISOString(),
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: newProjectType,
+      client_name: null,
+      client_notion_page_id: null,
       priority: 'medium',
       turn: 'mine',
     };
@@ -601,6 +604,11 @@ function ProjectCard({
                 </span>
               </h3>
             </div>
+            {!!project.client_name?.trim() && (
+              <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                Klient: <span className="font-bold">{project.client_name}</span>
+              </div>
+            )}
             {project.description && (
               <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5 leading-tight">
                 {project.description}
@@ -802,6 +810,10 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   const [editType, setEditType] = useState<'own' | 'client'>(project.type || 'own');
   const [editDeadline, setEditDeadline] = useState<string>(project.deadline || '');
   const [editPriority, setEditPriority] = useState<Priority>((project.priority || 'medium') as Priority);
+  const [editClientName, setEditClientName] = useState<string>((project.client_name || '').toString());
+  const [editClientNotionPageId, setEditClientNotionPageId] = useState<string>((project.client_notion_page_id || '').toString());
+  const [clientOptions, setClientOptions] = useState<NotionClientRow[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [notesExpanded, setNotesExpanded] = useState(false);
@@ -818,6 +830,38 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!isSupabaseConfigured) {
+      setClientOptions([]);
+      return;
+    }
+    let cancelled = false;
+    setClientsLoading(true);
+    supabase
+      .from('notion_clients')
+      .select('*')
+      .eq('user_id', ANONYMOUS_USER_ID)
+      .order('title', { ascending: true })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('Error loading notion clients for project:', error);
+          setClientOptions([]);
+          return;
+        }
+        const rows = (data ?? []) as NotionClientRow[];
+        const filtered = rows.filter(r => matchesInProgressStatus(getNotionStatusLabel(r.notion_properties)));
+        setClientOptions(filtered);
+      })
+      .finally(() => {
+        if (!cancelled) setClientsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditing]);
 
   const editor = useEditor({
     extensions: createRichNoteExtensions('Zapisz luźne notatki, linki, pomysły...'),
@@ -897,6 +941,8 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       emoji: editEmoji,
       type: editType,
       deadline: editDeadline.trim() ? editDeadline.trim() : null,
+      client_name: editClientName.trim() ? editClientName.trim() : null,
+      client_notion_page_id: editClientNotionPageId.trim() ? editClientNotionPageId.trim() : null,
       priority: editPriority,
     });
     setIsEditing(false);
@@ -911,6 +957,8 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     setEditType(project.type || 'own');
     setEditDeadline(project.deadline || '');
     setEditPriority((project.priority || 'medium') as Priority);
+    setEditClientName((project.client_name || '').toString());
+    setEditClientNotionPageId((project.client_notion_page_id || '').toString());
     setIsEditing(true);
   };
 
@@ -1127,6 +1175,11 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
                   <span className="min-w-0 truncate">{project.title}</span>
                 </span>
               </h2>
+              {!!project.client_name?.trim() && (
+                <span className="mt-2.5 hidden sm:inline-flex items-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 px-2.5 py-1 text-xs font-bold">
+                  Klient: {project.client_name}
+                </span>
+              )}
               <ProjectTurnToggle
                 turn={detailTurn}
                 onToggle={() =>
@@ -1177,6 +1230,67 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">
+                Klient (wybór z listy lub wpis ręczny)
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <select
+                    value={editClientNotionPageId || ''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) {
+                        setEditClientNotionPageId('');
+                        return;
+                      }
+                      const picked = clientOptions.find(c => c.notion_page_id === id);
+                      setEditClientNotionPageId(id);
+                      if (picked?.title) setEditClientName(picked.title);
+                    }}
+                    className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                    disabled={clientsLoading}
+                    title="Wybierz klienta (tylko status: In progress)"
+                  >
+                    <option value="">{clientsLoading ? 'Ładowanie klientów…' : '— wybierz z listy (In progress) —'}</option>
+                    {clientOptions.map(c => (
+                      <option key={c.notion_page_id} value={c.notion_page_id}>
+                        {c.title || 'Bez tytułu'}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
+                    Lista pokazuje tylko klientów z Notion ze statusem „In progress”.
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={editClientName}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditClientName(v);
+                      // Jeśli użytkownik zaczyna wpisywać ręcznie, odpinamy wybór z Notion.
+                      setEditClientNotionPageId('');
+                    }}
+                    placeholder="Imię i nazwisko (ręcznie)…"
+                    className="w-full bg-slate-50 dark:bg-tp-muted/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300"
+                  />
+                  {(editClientName || editClientNotionPageId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditClientName('');
+                        setEditClientNotionPageId('');
+                      }}
+                      className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-red-600 transition-colors"
+                    >
+                      Wyczyść klienta
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2 block">Link (URL)</label>
               <div className="relative">

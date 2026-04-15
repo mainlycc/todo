@@ -107,6 +107,10 @@ export interface Project {
   emoji?: string;
   type?: 'own' | 'client';
   deadline?: string | null; // YYYY-MM-DD
+  /** Nazwa klienta przypisana do projektu (wybór z Notion lub ręczny wpis). */
+  client_name?: string | null;
+  /** Jeśli wybrano klienta z Notion (tabela notion_clients) — jego `notion_page_id`. */
+  client_notion_page_id?: string | null;
   /** Priorytet domyślny dla zadań w tym projekcie (gdy zadanie nie ma własnego). */
   priority?: Priority;
   /** Kolejka kontaktu: `mine` — Twoja kolej (👉), `theirs` — kolej klienta (👆). */
