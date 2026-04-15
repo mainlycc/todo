@@ -3,16 +3,26 @@ import { useState, FormEvent, ChangeEvent } from 'react';
 import { Project } from '../types';
 
 interface PaymentFormProps {
-  onAdd: (title: string, date: string, net_amount: number, gross_amount: number, projectId: string | null) => void;
+  onAdd: (
+    title: string,
+    date: string,
+    net_amount: number,
+    gross_amount: number,
+    projectId: string | null,
+    isRealized: boolean
+  ) => void;
   projects: Project[];
+  defaultIsRealized?: boolean;
+  allowSetRealized?: boolean;
 }
 
-export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
+export function PaymentForm({ onAdd, projects, defaultIsRealized = false, allowSetRealized = false }: PaymentFormProps) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [netAmount, setNetAmount] = useState('');
   const [grossAmount, setGrossAmount] = useState('');
   const [projectId, setProjectId] = useState<string>('');
+  const [isRealized, setIsRealized] = useState<boolean>(defaultIsRealized);
 
   const handleNetChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -28,12 +38,13 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (title.trim() && date && netAmount && grossAmount) {
-      onAdd(title.trim(), date, parseFloat(netAmount), parseFloat(grossAmount), projectId || null);
+      onAdd(title.trim(), date, parseFloat(netAmount), parseFloat(grossAmount), projectId || null, isRealized);
       setTitle('');
       setDate('');
       setNetAmount('');
       setGrossAmount('');
       setProjectId('');
+      setIsRealized(defaultIsRealized);
     }
   };
 
@@ -121,6 +132,17 @@ export function PaymentForm({ onAdd, projects }: PaymentFormProps) {
               </div>
             </div>
           </div>
+          {allowSetRealized && (
+            <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted text-slate-700 dark:text-slate-200 w-full md:w-auto">
+              <input
+                type="checkbox"
+                className="w-4 h-4"
+                checked={isRealized}
+                onChange={() => setIsRealized(v => !v)}
+              />
+              <span>Zrealizowana</span>
+            </label>
+          )}
           <button
             type="submit"
             className="w-full md:w-auto bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors font-medium flex items-center justify-center gap-2"

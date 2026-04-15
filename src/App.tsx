@@ -1158,7 +1158,18 @@ export default function App() {
   };
 
   // Payments logic
-  const handleAddPayment = async (title: string, date: string, net_amount: number, gross_amount: number, projectId: string | null) => {
+  const handleAddPayment = async (
+    title: string,
+    date: string,
+    net_amount: number,
+    gross_amount: number,
+    projectId: string | null,
+    isRealized: boolean
+  ) => {
+    if (!isSupabaseConfigured) {
+      alert('Supabase nie jest skonfigurowane (brak VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Nie zapisano wpłaty.');
+      return;
+    }
     const { data, error } = await supabase
       .from('payments')
       .insert([{
@@ -1167,7 +1178,7 @@ export default function App() {
         date,
         net_amount,
         gross_amount,
-        is_realized: false,
+        is_realized: isRealized,
         project_id: projectId
       }])
       .select();
@@ -1185,6 +1196,10 @@ export default function App() {
   };
 
   const handleTogglePaymentRealized = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      alert('Supabase nie jest skonfigurowane. Nie zapisano zmiany statusu wpłaty.');
+      return;
+    }
     const payment = payments.find(p => p.id === id);
     if (!payment) return;
 
@@ -1199,6 +1214,10 @@ export default function App() {
   };
 
   const handleDeletePayment = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      alert('Supabase nie jest skonfigurowane. Nie usunięto wpłaty.');
+      return;
+    }
     const { error } = await supabase
       .from('payments')
       .delete()
@@ -1210,6 +1229,10 @@ export default function App() {
   };
 
   const handleUpsertPaymentMonthOverride = async (month: string, net_total_override: number, gross_total_override: number) => {
+    if (!isSupabaseConfigured) {
+      alert('Supabase nie jest skonfigurowane. Nie zapisano override dla miesiąca.');
+      return;
+    }
     const payload = {
       user_id: ANONYMOUS_USER_ID,
       month,
@@ -1445,6 +1468,8 @@ export default function App() {
                 payments={payments}
                 overrides={paymentMonthOverrides}
                 onUpsertOverride={handleUpsertPaymentMonthOverride}
+                projects={projects}
+                onAddPayment={handleAddPayment}
               />
             )}
 

@@ -52,7 +52,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { supabase } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { ANONYMOUS_USER_ID } from '../constants';
 
 interface ProjectsViewProps {
@@ -135,7 +135,6 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
       created_at: new Date().toISOString(),
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       type: newProjectType,
-      deadline: null,
       priority: 'medium',
       turn: 'mine',
     };
@@ -146,7 +145,17 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
     setIsAddingProject(false);
     setExpandedProjectId(newProject.id);
 
-    const { error } = await supabase.from('projects').insert([newProject]);
+    if (!isSupabaseConfigured) {
+      console.error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Project saved only locally.');
+      return;
+    }
+
+    // Nie wysyłaj pól, które są puste/null — jeśli dana kolumna nie istnieje w DB (np. deadline),
+    // PostgREST odrzuci insert/update nawet gdy wartość jest null.
+    const row: any = { ...newProject };
+    if (row.deadline == null || row.deadline === '') delete row.deadline;
+
+    const { error } = await supabase.from('projects').insert([row]);
     if (error) {
       console.error('Error adding project to Supabase:', error);
       // We keep it locally even if Supabase fails, but we could optionally revert here
@@ -158,8 +167,14 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
     const newProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
     setProjects(newProjects);
 
+    if (!isSupabaseConfigured) {
+      console.error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Project updated only locally.');
+      return;
+    }
+
     // Nie wysyłaj `id` w treści PATCH — PostgREST może odrzucić żądanie; wtedy nic nie trafia do bazy.
-    const { id, ...row } = updatedProject;
+    const { id, ...row } = updatedProject as any;
+    if ((row as any).deadline == null || (row as any).deadline === '') delete (row as any).deadline;
     const { error } = await supabase.from('projects').update(row).eq('id', id);
     if (error) {
       console.error('Error updating project in Supabase:', error);
@@ -169,6 +184,15 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
   };
 
   const handleDeleteProject = async (id: string) => {
+    if (!isSupabaseConfigured) {
+      console.error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY). Project deleted only locally.');
+      const newProjects = projects.filter(p => p.id !== id);
+      setProjects(newProjects);
+      if (expandedProjectId === id) {
+        setExpandedProjectId(null);
+      }
+      return;
+    }
     const { error } = await supabase.from('projects').delete().eq('id', id);
     if (!error) {
       const newProjects = projects.filter(p => p.id !== id);
@@ -242,7 +266,7 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
+      <div className="flex-1 pr-2 pb-8">
         {isAddingProject && (
           <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 mb-6">
             <input
@@ -850,7 +874,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
       <RichNoteFormattingMenuBar editor={editor} clockMode="date" />
       <div
         className={cn(
-          'flex-1 overflow-y-auto custom-scrollbar cursor-text min-h-0',
+          'flex-1 overflow-visible cursor-text min-h-0',
           notesExpanded ? 'px-2 pt-1' : '',
         )}
         onClick={() => editor?.commands.focus()}
@@ -1031,7 +1055,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   return (
     <div
       className={cn(
-        'h-full flex flex-col gap-6 animate-in fade-in duration-200',
+        'min-h-full flex flex-col gap-6 animate-in fade-in duration-200',
         detailMyTurnHighlight &&
           'rounded-2xl border-2 border-emerald-500 dark:border-emerald-400 bg-emerald-100/90 dark:bg-emerald-950/55 p-4 sm:p-5 shadow-[0_0_0_4px_rgba(16,185,129,0.35),0_20px_44px_-14px_rgba(5,150,105,0.45)] dark:shadow-[0_0_0_4px_rgba(52,211,153,0.35),0_20px_44px_-14px_rgba(16,185,129,0.4)]'
       )}
@@ -1267,7 +1291,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
         </p>
       )}
 
-      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
+      <div className="flex-1 pr-2 pb-8">
         <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-8 h-full">
           {/* Kanban */}
           <div className="flex-1 min-w-0 space-y-4 flex flex-col h-full">
@@ -1299,7 +1323,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1 pr-1">
                 {columns.map((column, idx) => (
                   <KanbanColumn
                     key={column.id}
