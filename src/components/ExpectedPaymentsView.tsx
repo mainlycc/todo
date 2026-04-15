@@ -10,7 +10,8 @@ export interface ExpectedPaymentsViewProps {
     date: string,
     net_amount: number,
     gross_amount: number,
-    projectId: string | null
+    projectId: string | null,
+    isRealized: boolean
   ) => void | Promise<void>;
   onTogglePaymentRealized: (id: string) => void | Promise<void>;
   onDeletePayment: (id: string) => void | Promise<void>;
@@ -25,7 +26,7 @@ export function ExpectedPaymentsView({
 }: ExpectedPaymentsViewProps) {
   return (
     <>
-      <PaymentForm onAdd={onAddPayment} projects={projects} />
+      <PaymentForm onAdd={onAddPayment} projects={projects} defaultIsRealized={false} allowSetRealized={false} />
       <div className="space-y-3 mt-6">
         {sortedPayments.length === 0 ? (
           <div className="text-center py-12 bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 border-dashed">

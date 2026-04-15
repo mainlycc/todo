@@ -325,18 +325,6 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
     };
   }, [resizingEventId, resizeEdge, draggingEventId, dragStartY, dragStartMinutes, timeline, onUpdate]);
   
-  const updateWakeUp = (time: string) => {
-    const updatedTimeline: DailyTimelineData = timeline || {
-      id: generateId(),
-      user_id: '',
-      date: '',
-      wake_up_time: '',
-      sleep_time: '',
-      events: []
-    };
-    onUpdate({ ...updatedTimeline, wake_up_time: time });
-  };
-
   const updateHourEvent = (hour: number, title: string) => {
     const updatedTimeline: DailyTimelineData = timeline || {
       id: generateId(),
@@ -432,12 +420,9 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
           <label className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold block">Pobudka</label>
           <div className="flex items-center gap-2">
             <Sun className="w-4 h-4 text-amber-500 shrink-0" />
-            <input 
-              type="time" 
-              value={timeline?.wake_up_time || ''} 
-              onChange={(e) => updateWakeUp(e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium tabular-nums w-full p-0 text-slate-900 dark:text-white [color-scheme:light] dark:[color-scheme:dark]"
-            />
+            <div className="text-sm font-bold tracking-tight tabular-nums text-slate-900 dark:text-white">
+              {timeline?.wake_up_time || '—'}
+            </div>
           </div>
         </div>
         <div className="bg-slate-50 dark:bg-tp-surface rounded-xl border border-slate-200 dark:border-white/10 p-3 flex flex-col gap-2">

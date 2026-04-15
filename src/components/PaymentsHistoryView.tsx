@@ -12,16 +12,27 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Payment, PaymentMonthOverride } from '../types';
+import { Payment, PaymentMonthOverride, Project } from '../types';
 import { cn } from '../utils';
+import { PaymentForm } from './PaymentForm';
 
 type SeriesKey = 'predicted' | 'realized';
 type AmountKind = 'gross' | 'net';
+type YScaleMax = 10000 | 20000;
 
 interface PaymentsHistoryViewProps {
   payments: Payment[];
   overrides: PaymentMonthOverride[];
   onUpsertOverride: (month: string, net_total_override: number, gross_total_override: number) => Promise<void> | void;
+  projects: Project[];
+  onAddPayment: (
+    title: string,
+    date: string,
+    net_amount: number,
+    gross_amount: number,
+    projectId: string | null,
+    isRealized: boolean
+  ) => void | Promise<void>;
 }
 
 function monthKeyFromDate(date: Date) {
@@ -38,10 +49,11 @@ function formatMoney(value: number) {
   return value.toFixed(2);
 }
 
-export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: PaymentsHistoryViewProps) {
+export function PaymentsHistoryView({ payments, overrides, onUpsertOverride, projects, onAddPayment }: PaymentsHistoryViewProps) {
   const [showPredicted, setShowPredicted] = useState(true);
   const [showRealized, setShowRealized] = useState(true);
   const [amountKind, setAmountKind] = useState<AmountKind>('gross');
+  const [yScaleMax, setYScaleMax] = useState<YScaleMax>(10000);
 
   const [editingMonth, setEditingMonth] = useState<string | null>(null);
   const [editNet, setEditNet] = useState('');
@@ -158,6 +170,18 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
 
   return (
     <div className="space-y-6">
+      <div className="space-y-2">
+        <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+          Dodaj zrealizowaną wpłatę
+        </h2>
+        <PaymentForm
+          onAdd={onAddPayment}
+          projects={projects}
+          defaultIsRealized={true}
+          allowSetRealized={false}
+        />
+      </div>
+
       <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-hidden transition-colors">
         <div className="p-5 border-b border-slate-100 dark:border-white/6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -194,6 +218,35 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
                 </button>
               </div>
 
+              <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-xl p-1 border border-slate-200 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setYScaleMax(10000)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                    yScaleMax === 10000
+                      ? "bg-white dark:bg-tp-surface text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title="Skala osi Y do 10 000"
+                >
+                  do 10k
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setYScaleMax(20000)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-bold rounded-lg transition-colors",
+                    yScaleMax === 20000
+                      ? "bg-white dark:bg-tp-surface text-slate-900 dark:text-white shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title="Skala osi Y do 20 000"
+                >
+                  do 20k
+                </button>
+              </div>
+
               <label className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60">
                 <input type="checkbox" className="w-4 h-4" checked={showPredicted} onChange={() => setShowPredicted(v => !v)} />
                 <span className="text-slate-700 dark:text-slate-200">Przewidywane</span>
@@ -211,7 +264,7 @@ export function PaymentsHistoryView({ payments, overrides, onUpsertOverride }: P
             <LineChart data={chartData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.25} />
               <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} domain={[0, yScaleMax]} />
               <Tooltip
                 formatter={(v: any, name: any) => [formatMoney(Number(v)), name === 'predicted' ? 'Przewidywane' : 'Zrealizowane']}
               />
