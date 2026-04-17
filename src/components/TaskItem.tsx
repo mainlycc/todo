@@ -175,6 +175,7 @@ export function TaskItem({
   const bgClass = isCustomStyle ? "" : styleData as string;
   const inlineStyle = isCustomStyle ? styleData.style : {};
   const projectTagColor = projectColor || undefined;
+  const metricCount = task.metric_kind ? (task.metric_count ?? 0) : null;
 
   return (
     <div 
@@ -210,11 +211,50 @@ export function TaskItem({
         </button>
         
         <div className="flex-grow min-w-0">
-          <h3 className={cn(
-            "text-base font-medium transition-all",
-            task.completed ? "text-slate-500 dark:text-slate-500 line-through" : "text-slate-900 dark:text-slate-100"
-          )}>
-            {task.title}
+          <h3
+            className={cn(
+              "text-base font-medium transition-all flex items-center gap-2 min-w-0",
+              task.completed
+                ? "text-slate-500 dark:text-slate-500 line-through"
+                : "text-slate-900 dark:text-slate-100"
+            )}
+          >
+            <span className="truncate">{task.title}</span>
+            {task.metric_kind && (
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-semibold",
+                  task.completed
+                    ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+                    : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"
+                )}
+                title={
+                  task.metric_kind === 'cv_sent'
+                    ? 'Wysłane CV'
+                    : task.metric_kind === 'client_inquiry_sent'
+                      ? 'Wysłane zapytania do klientów'
+                      : 'Licznik'
+                }
+              >
+                <span className="tabular-nums leading-none">{metricCount}</span>
+                <button
+                  type="button"
+                  className={cn(
+                    "ml-0.5 p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const current = task.metric_count ?? 0;
+                    onUpdateTask({ ...task, metric_count: current + 1 });
+                  }}
+                  aria-label="Zwiększ licznik"
+                  title="Dodaj +1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            )}
           </h3>
           
           <div className="flex flex-wrap items-center gap-2 mt-2">

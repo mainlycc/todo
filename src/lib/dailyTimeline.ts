@@ -2,6 +2,13 @@ import { ANONYMOUS_USER_ID } from '../constants';
 import type { DailyTimeline, DailyTimelineEvent } from '../types';
 import { supabase } from './supabase';
 
+function normalizeDateKey(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
 export function normalizeDailyTimelineEvents(raw: unknown): DailyTimelineEvent[] {
   if (Array.isArray(raw)) return raw as DailyTimelineEvent[];
   if (typeof raw === 'string') {
@@ -18,12 +25,13 @@ export function normalizeDailyTimelineEvents(raw: unknown): DailyTimelineEvent[]
 export function normalizeDailyTimelineFromApiRow(raw: unknown): DailyTimeline | null {
   if (!raw || typeof raw !== 'object') return null;
   const t = raw as Record<string, unknown>;
-  if (typeof t.date !== 'string' || !t.date) return null;
+  const normalizedDate = normalizeDateKey(t.date);
+  if (!normalizedDate) return null;
   const events = normalizeDailyTimelineEvents(t.events);
   return {
-    id: typeof t.id === 'string' ? t.id : `new-${t.date}`,
+    id: typeof t.id === 'string' ? t.id : `new-${normalizedDate}`,
     user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
-    date: t.date,
+    date: normalizedDate,
     wake_up_time: typeof t.wake_up_time === 'string' ? t.wake_up_time : undefined,
     sleep_time: typeof t.sleep_time === 'string' ? t.sleep_time : undefined,
     events,
@@ -40,9 +48,10 @@ export function parseDailyTimelinesFromLocalStorage(): Record<string, DailyTimel
     for (const [dateKey, value] of Object.entries(parsed)) {
       if (!value || typeof value !== 'object') continue;
       const t = value as Record<string, unknown>;
-      const date = typeof t.date === 'string' && t.date ? t.date : dateKey;
+      const date = normalizeDateKey(t.date) ?? normalizeDateKey(dateKey);
+      if (!date) continue;
       const events = normalizeDailyTimelineEvents(t.events);
-      out[dateKey] = {
+      out[date] = {
         id: typeof t.id === 'string' ? t.id : `new-${date}`,
         user_id: typeof t.user_id === 'string' ? t.user_id : ANONYMOUS_USER_ID,
         date,

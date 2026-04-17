@@ -14,6 +14,6 @@ export const QUICK_TODAY_PRESETS: { title: string; Icon: LucideIcon; hint: strin
   { title: 'Sprzątanie', Icon: Sparkles, hint: 'Dodaj zadanie: sprzątanie' },
   { title: 'Pranie', Icon: Shirt, hint: 'Dodaj zadanie: pranie' },
   { title: 'Poczta i follow-up', Icon: Mail, hint: 'Dodaj zadanie: poczta i follow-up' },
-  { title: 'Skupiona praca', Icon: Laptop, hint: 'Dodaj zadanie: skupiona praca' },
+  { title: 'Szukanie pracy', Icon: Laptop, hint: 'Dodaj zadanie: szukanie pracy' },
   { title: 'Zakupy', Icon: ShoppingBasket, hint: 'Dodaj zadanie: zakupy' },
 ];

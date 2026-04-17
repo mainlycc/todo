@@ -34,6 +34,9 @@ export interface Task {
   is_recurring?: boolean;
   recurring_template_id?: string | null;
   due_date?: string | null;
+  /** Licznik dla zadań typu "wysłane CV" / "wysłane zapytania" itp. */
+  metric_kind?: 'cv_sent' | 'client_inquiry_sent' | null;
+  metric_count?: number | null;
   project_id?: string;
   project_title?: string;
   kanban_status?: KanbanStatus;
@@ -146,7 +149,17 @@ export type ViewMode =
   | 'rules'
   | 'goals'
   | 'projects'
-  | 'clients';
+  | 'clients'
+  | 'pomysly';
+
+/** Wiersz tabeli `ideas` (pomysły → Notion + Supabase). */
+export interface IdeaRow {
+  id: string;
+  user_id: string;
+  content: string;
+  notion_page_id: string | null;
+  created_at: string;
+}
 
 /** Wiersz kopii bazy klientów z Notion (Supabase: notion_clients). */
 export interface NotionClientRow {

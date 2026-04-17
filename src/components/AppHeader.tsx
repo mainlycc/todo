@@ -16,6 +16,7 @@ const viewTitles: Record<ViewMode, string> = {
   projects: 'Projekty',
   clients: 'Klienci',
   focus: 'Tryb Skupienia',
+  pomysly: 'Pomysły',
 };
 
 export interface AppHeaderProps {

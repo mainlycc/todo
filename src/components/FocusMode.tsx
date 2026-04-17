@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Pause, RotateCcw, CheckCircle2, Circle, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RotateCcw, CheckCircle2, Circle, Plus, Minus, Trash2 } from 'lucide-react';
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Task } from '../types';
 import { cn } from '../utils';
@@ -29,6 +29,13 @@ export function FocusMode({
   const [timerMode, setTimerMode] = useState<TimerMode>('work');
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [localNotes, setLocalNotes] = useState(task.notes || '');
+  const metricCount = task.metric_kind ? (task.metric_count ?? 0) : null;
+  const metricLabel =
+    task.metric_kind === 'cv_sent'
+      ? 'Wysłane CV'
+      : task.metric_kind === 'client_inquiry_sent'
+        ? 'Wysłane zapytania'
+        : 'Licznik';
 
   useEffect(() => {
     setLocalNotes(task.notes || '');
@@ -116,6 +123,41 @@ export function FocusMode({
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white truncate flex-grow">
           {task.title}
         </h2>
+        {task.metric_kind && (
+          <div className="flex items-center gap-3 bg-white dark:bg-tp-surface px-4 py-2 rounded-xl border border-slate-200 dark:border-white/6">
+            <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              {metricLabel}:
+            </span>
+            <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400 tabular-nums">
+              {metricCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const current = task.metric_count ?? 0;
+                onUpdateTask({ ...task, metric_count: Math.max(0, current - 1) });
+              }}
+              disabled={(task.metric_count ?? 0) <= 0}
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-tp-muted text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-200 dark:hover:bg-tp-raised transition-colors active:scale-95 disabled:opacity-40 disabled:hover:bg-slate-100 dark:disabled:hover:bg-tp-muted"
+              title="Odejmij -1"
+              aria-label="Zmniejsz licznik"
+            >
+              <Minus className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const current = task.metric_count ?? 0;
+                onUpdateTask({ ...task, metric_count: current + 1 });
+              }}
+              className="w-10 h-10 rounded-full flex items-center justify-center bg-indigo-600 dark:bg-indigo-500 text-white shadow-sm hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors active:scale-95"
+              title="Dodaj +1"
+              aria-label="Zwiększ licznik"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2 bg-white dark:bg-tp-surface px-4 py-2 rounded-xl border border-slate-200 dark:border-white/6">
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Ukończone Pomodoro:</span>
           <span className="text-lg font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">

@@ -11,6 +11,7 @@ import { ExpectedPaymentsView } from './components/ExpectedPaymentsView';
 import { FocusMode } from './components/FocusMode';
 import { GoalsView } from './components/GoalsView';
 import { PaymentsHistoryView } from './components/PaymentsHistoryView';
+import { PomyslyView } from './components/PomyslyView';
 import { ProjectsView } from './components/ProjectsView';
 import { RulesView } from './components/RulesView';
 import { Sidebar } from './components/Sidebar';
@@ -718,6 +719,14 @@ export default function App() {
         }
       }
     } else {
+      const normalizedTitle = title.trim().toLowerCase();
+      const metric_kind =
+        normalizedTitle === 'szukanie klientów'
+          ? 'client_inquiry_sent'
+          : normalizedTitle === 'szukanie pracy'
+            ? 'cv_sent'
+            : null;
+
       const { data, error } = await supabase
         .from('tasks')
         .insert([{
@@ -729,6 +738,8 @@ export default function App() {
           category,
           color,
           pomodoros_completed: 0,
+          metric_kind,
+          metric_count: metric_kind ? 0 : null,
           notes: '',
           due_date: dueDate || null
         }])
@@ -1383,6 +1394,7 @@ export default function App() {
                 view === 'focus' ||
                 view === 'rules' ||
                 view === 'goals' ||
+                view === 'pomysly' ||
                 view === 'projects' ||
                 view === 'clients'
                 ? 'max-w-7xl'
@@ -1454,6 +1466,7 @@ export default function App() {
                 dailyTimelines={dailyTimelines}
                 onSaveDailyTimeline={handleSaveDailyTimelineForDate}
                 projects={projects}
+                completionDates={completionDates}
               />
             )}
 
@@ -1480,6 +1493,8 @@ export default function App() {
             {view === 'rules' && <RulesView />}
 
             {view === 'goals' && <GoalsView />}
+
+            {view === 'pomysly' && <PomyslyView />}
 
             {view === 'projects' && (
               <ProjectsView

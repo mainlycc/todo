@@ -1,10 +1,26 @@
 import { useMemo, useState } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  getISOWeek,
+  getISOWeekYear,
+} from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, CheckCircle2, CalendarPlus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, CalendarPlus, Trash2, Download, Dumbbell } from 'lucide-react';
 import { DailyTimeline, DailyTimelineEvent, Project, Task } from '../types';
 import { cn } from '../utils';
 import { DailyNotePanel } from './DailyNotePanel';
+import { computeDayLog, minutesToHumanText } from '../lib/dailyLog';
+import { downloadTextFile } from '../lib/downloadTextFile';
+import { renderDayMarkdown, renderRangeMarkdown } from '../lib/markdownExport';
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -13,6 +29,7 @@ interface CalendarViewProps {
   dailyTimelines: Record<string, DailyTimeline>;
   onSaveDailyTimeline: (date: string, timeline: DailyTimeline) => void;
   projects: Project[];
+  completionDates?: Record<string, string | undefined>;
 }
 
 function generateId() {
@@ -24,7 +41,26 @@ function sortTimeAsc(a: { time: string }, b: { time: string }) {
   return a.time.localeCompare(b.time);
 }
 
-export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimelines, onSaveDailyTimeline, projects }: CalendarViewProps) {
+function minutesToCompactHours(totalMinutes: number): string {
+  const m = Math.max(0, Math.round(totalMinutes));
+  if (m <= 0) return '';
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  if (h <= 0) return `${mm}m`;
+  if (mm === 0) return `${h}h`;
+  const dec = Math.round((mm / 60) * 10) / 10;
+  return `${h + dec}h`;
+}
+
+export function CalendarView({
+  tasks,
+  dailyNotes,
+  onSaveDailyNote,
+  dailyTimelines,
+  onSaveDailyTimeline,
+  projects,
+  completionDates,
+}: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [showPlanned, setShowPlanned] = useState(true);
@@ -46,10 +82,97 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
   const dateFormat = "d";
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
+  const monthStats = useMemo(() => {
+    const monthStartLocal = startOfMonth(currentMonth);
+    const monthEndLocal = endOfMonth(monthStartLocal);
+    const monthDays = eachDayOfInterval({ start: monthStartLocal, end: monthEndLocal }).map(d => format(d, 'yyyy-MM-dd'));
+
+    const perDay = new Map<string, { gym: boolean; workMinutes: number }>();
+    let gymDays = 0;
+    let workMinutesTotal = 0;
+
+    for (const date of monthDays) {
+      const log = computeDayLog({
+        date,
+        tasks,
+        completionDates,
+        dailyNotes,
+        dailyTimeline: dailyTimelines[date] || null,
+      });
+      perDay.set(date, { gym: log.gym, workMinutes: log.workMinutes });
+      if (log.gym) gymDays += 1;
+      workMinutesTotal += log.workMinutes;
+    }
+
+    return { perDay, gymDays, workMinutesTotal };
+  }, [currentMonth, tasks, completionDates, dailyNotes, dailyTimelines]);
+
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
   const selectedDateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
+
+  const handleExportDay = () => {
+    if (!selectedDateStr) return;
+    const timeline = dailyTimelines[selectedDateStr] || null;
+    const log = computeDayLog({
+      date: selectedDateStr,
+      tasks,
+      completionDates,
+      dailyNotes,
+      dailyTimeline: timeline,
+    });
+    const md = renderDayMarkdown(log);
+    downloadTextFile(`dzien-${selectedDateStr}.md`, md);
+  };
+
+  const handleExportWeek = () => {
+    if (!selectedDate) return;
+    const from = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const to = endOfWeek(selectedDate, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: from, end: to }).map(d => format(d, 'yyyy-MM-dd'));
+    const logs = days.map(dateStr =>
+      computeDayLog({
+        date: dateStr,
+        tasks,
+        completionDates,
+        dailyNotes,
+        dailyTimeline: dailyTimelines[dateStr] || null,
+      })
+    );
+    const week = getISOWeek(selectedDate);
+    const weekYear = getISOWeekYear(selectedDate);
+    const md = renderRangeMarkdown({
+      title: `Tydzień ${weekYear}-W${String(week).padStart(2, '0')}`,
+      from: format(from, 'yyyy-MM-dd'),
+      to: format(to, 'yyyy-MM-dd'),
+      days: logs,
+    });
+    downloadTextFile(`tydzien-${weekYear}-W${String(week).padStart(2, '0')}.md`, md);
+  };
+
+  const handleExportMonth = () => {
+    const monthStartLocal = startOfMonth(currentMonth);
+    const monthEndLocal = endOfMonth(monthStartLocal);
+    const days = eachDayOfInterval({ start: monthStartLocal, end: monthEndLocal }).map(d => format(d, 'yyyy-MM-dd'));
+    const logs = days.map(dateStr =>
+      computeDayLog({
+        date: dateStr,
+        tasks,
+        completionDates,
+        dailyNotes,
+        dailyTimeline: dailyTimelines[dateStr] || null,
+      })
+    );
+    const ym = format(monthStartLocal, 'yyyy-MM');
+    const md = renderRangeMarkdown({
+      title: `Miesiąc ${format(monthStartLocal, 'LLLL yyyy', { locale: pl })}`,
+      from: format(monthStartLocal, 'yyyy-MM-dd'),
+      to: format(monthEndLocal, 'yyyy-MM-dd'),
+      days: logs,
+    });
+    downloadTextFile(`miesiac-${ym}.md`, md);
+  };
 
   const completedTasksForSelected = useMemo(() => {
     if (!selectedDateStr) return [];
@@ -137,6 +260,14 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
             <h2 className="text-xl font-bold text-slate-900 dark:text-white capitalize">
               {format(currentMonth, 'MMMM yyyy', { locale: pl })}
             </h2>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/10">
+                Siłownia: {monthStats.gymDays} dni
+              </span>
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-black/10">
+                Praca: {minutesToHumanText(monthStats.workMinutesTotal)}
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-2 mt-3">
               <div className="flex items-center bg-slate-100 dark:bg-tp-muted rounded-xl p-1 border border-slate-200 dark:border-white/10">
                 <button
@@ -200,6 +331,10 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
             const doneCount = showDone ? tasks.filter(t => t.date === dateStr && t.completed).length : 0;
             const plannedCount = showPlanned ? (dailyTimelines[dateStr]?.events?.length || 0) : 0;
             const hasNote = showNotes ? !!dailyNotes[dateStr] : false;
+            const perDay = monthStats.perDay.get(dateStr);
+            const hasGym = !!perDay?.gym;
+            const workMinutes = perDay?.workMinutes ?? 0;
+            const workCompact = minutesToCompactHours(workMinutes);
 
             const isSelected = !!(selectedDate && isSameDay(day, selectedDate));
             const isCurrentMonth = isSameMonth(day, monthStart);
@@ -223,6 +358,20 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
                 )}
               >
                 <div className="text-lg leading-none">{format(day, dateFormat)}</div>
+                {(hasGym || workMinutes > 0) && (
+                  <div className={cn("mt-1 flex items-center gap-1.5 text-[10px] font-bold", isSelected ? "text-white/95" : "text-slate-500 dark:text-slate-400")}>
+                    {hasGym && (
+                      <span className="inline-flex items-center gap-1" title="Siłownia / trening">
+                        <Dumbbell className={cn("w-3 h-3", isSelected ? "text-white" : "text-emerald-600 dark:text-emerald-400")} />
+                      </span>
+                    )}
+                    {workMinutes > 0 && (
+                      <span title={`Praca: ${minutesToHumanText(workMinutes)}`}>
+                        {workCompact}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="absolute bottom-2 flex gap-1.5">
                   {plannedCount > 0 && (
                     <div className={cn("w-2 h-2 rounded-full", isSelected ? "bg-white" : "bg-indigo-500 dark:bg-indigo-400")} title={`${plannedCount} wydarzeń`} />
@@ -265,6 +414,51 @@ export function CalendarView({ tasks, dailyNotes, onSaveDailyNote, dailyTimeline
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Export */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleExportDay}
+                  disabled={!selectedDateStr}
+                  className={cn(
+                    "px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all",
+                    !selectedDateStr ? "opacity-50 cursor-not-allowed" : "hover:translate-y-[-1px] hover:shadow-md",
+                    "bg-white dark:bg-tp-surface text-slate-900 dark:text-white border-slate-200 dark:border-white/6 hover:bg-slate-50 dark:hover:bg-tp-muted"
+                  )}
+                  title="Eksportuj dzień do pliku Markdown"
+                >
+                  <Download className="w-4 h-4" />
+                  Eksport dnia
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportWeek}
+                  disabled={!selectedDate}
+                  className={cn(
+                    "px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all",
+                    !selectedDate ? "opacity-50 cursor-not-allowed" : "hover:translate-y-[-1px] hover:shadow-md",
+                    "bg-white dark:bg-tp-surface text-slate-900 dark:text-white border-slate-200 dark:border-white/6 hover:bg-slate-50 dark:hover:bg-tp-muted"
+                  )}
+                  title="Eksportuj tydzień (pon–nd) do pliku Markdown"
+                >
+                  <Download className="w-4 h-4" />
+                  Eksport tygodnia
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportMonth}
+                  className={cn(
+                    "px-3 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all",
+                    "hover:translate-y-[-1px] hover:shadow-md",
+                    "bg-white dark:bg-tp-surface text-slate-900 dark:text-white border-slate-200 dark:border-white/6 hover:bg-slate-50 dark:hover:bg-tp-muted"
+                  )}
+                  title="Eksportuj miesiąc z aktualnie wyświetlanego kalendarza do pliku Markdown"
+                >
+                  <Download className="w-4 h-4" />
+                  Eksport miesiąca
+                </button>
+              </div>
+
               {/* Tabs */}
               <div className="flex items-center bg-white dark:bg-tp-surface rounded-2xl p-1 border border-slate-200 dark:border-white/6 shadow-sm">
                 <button

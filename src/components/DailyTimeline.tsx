@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Sun, Moon, MoreVertical, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2, Briefcase } from 'lucide-react';
+import { Sun, Moon, Clock, CheckCircle2, Footprints, Dumbbell, Thermometer, Snowflake, Utensils, Trash2, Briefcase } from 'lucide-react';
 import { DailyTimeline as DailyTimelineData, DailyTimelineEvent } from '../types';
 import { cn } from '../utils';
 
@@ -570,25 +570,13 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
             ref={addMenuRef}
             className={cn(
               "absolute left-[68px] z-[60] w-[min(420px,calc(100%-76px))]",
-              "rounded-2xl border border-slate-200 dark:border-white/10",
-              "bg-white/95 dark:bg-tp-surface/95 backdrop-blur-md shadow-xl"
+              "rounded-2xl border border-indigo-200/90 dark:border-indigo-400/35",
+              "bg-indigo-50/98 dark:bg-indigo-950/70 backdrop-blur-md shadow-xl shadow-indigo-500/15 dark:shadow-black/50"
             )}
             style={{ top: `${addMenu.topPx}px` }}
           >
             <div className="p-2.5 space-y-2.5">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 flex items-center justify-between gap-2">
-                  Szablony
-                  <button
-                    type="button"
-                    onClick={() => setAddMenu(null)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-tp-muted transition-colors"
-                    title="Zamknij (Esc)"
-                  >
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                   {DEFAULT_TEMPLATES.map(tpl => {
                     const colorCfg = COLORS.find(c => c.value === tpl.color) || COLORS[0];
                     const Icon = templateIcons[tpl.id];
@@ -624,10 +612,9 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({ timeline, onUpdate
                       </button>
                     );
                   })}
-                </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200/70 dark:border-white/10 bg-slate-50/80 dark:bg-black/10 p-2.5">
+              <div className="rounded-2xl border border-indigo-200/60 dark:border-white/12 bg-white/85 dark:bg-slate-950/45 p-2.5">
                 <div className="grid grid-cols-1 gap-2">
                   <input
                     type="text"

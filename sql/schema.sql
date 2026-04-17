@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     color TEXT,
     notes TEXT,
     pomodoros_completed INTEGER DEFAULT 0,
+    metric_kind TEXT,
+    metric_count INTEGER DEFAULT 0,
     is_recurring BOOLEAN DEFAULT FALSE,
     recurring_template_id UUID REFERENCES recurring_tasks(id) ON DELETE SET NULL,
     due_date TEXT,
@@ -88,10 +90,19 @@ ALTER TABLE daily_timelines ENABLE ROW LEVEL SECURITY;
 
 -- Utworzenie polityk dostępu (Policies) - pozwalają na wszystkie operacje (odczyt, zapis, usuwanie)
 -- W środowisku produkcyjnym warto je ograniczyć tylko do zalogowanego użytkownika (auth.uid() = user_id)
+DROP POLICY IF EXISTS "Allow all operations for recurring_tasks" ON recurring_tasks;
 CREATE POLICY "Allow all operations for recurring_tasks" ON recurring_tasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all operations for tasks" ON tasks;
 CREATE POLICY "Allow all operations for tasks" ON tasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all operations for subtasks" ON subtasks;
 CREATE POLICY "Allow all operations for subtasks" ON subtasks FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all operations for payments" ON payments;
 CREATE POLICY "Allow all operations for payments" ON payments FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all operations for daily_notes" ON daily_notes;
 CREATE POLICY "Allow all operations for daily_notes" ON daily_notes FOR ALL USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all operations for daily_timelines" ON daily_timelines;
 CREATE POLICY "Allow all operations for daily_timelines" ON daily_timelines FOR ALL USING (true) WITH CHECK (true);

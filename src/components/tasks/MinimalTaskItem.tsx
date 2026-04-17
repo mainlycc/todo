@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, GripVertical, Play, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical, Play, Plus, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { Priority, Project, Task } from '../../types';
 import { cn } from '../../utils';
@@ -101,6 +101,8 @@ export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
     }
   };
 
+  const metricCount = task.metric_kind ? (task.metric_count ?? 0) : null;
+
   return (
     <div
       className={cn(
@@ -140,6 +142,38 @@ export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
               : 'text-slate-800 dark:text-slate-200'
           )}
         />
+        {task.metric_kind && (
+          <span
+            className={cn(
+              "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold flex-shrink-0",
+              task.completed
+                ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+                : "bg-slate-50 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+            )}
+            title={
+              task.metric_kind === 'cv_sent'
+                ? 'Wysłane CV'
+                : task.metric_kind === 'client_inquiry_sent'
+                  ? 'Wysłane zapytania do klientów'
+                  : 'Licznik'
+            }
+          >
+            <span className="tabular-nums leading-none">{metricCount}</span>
+            <button
+              type="button"
+              className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              onClick={(e) => {
+                e.stopPropagation();
+                const current = task.metric_count ?? 0;
+                onUpdateTask({ ...task, metric_count: current + 1 });
+              }}
+              aria-label="Zwiększ licznik"
+              title="Dodaj +1"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </span>
+        )}
         {task.project_title ? (
           matchedProject && onOpenProject && !task.completed ? (
             <button

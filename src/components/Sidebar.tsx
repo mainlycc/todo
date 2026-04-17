@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Lightbulb,
   ShieldCheck,
   Target,
   Briefcase,
@@ -39,6 +40,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'projects', label: 'Projekty', icon: Briefcase },
     { id: 'clients', label: 'Klienci', icon: Users },
     { id: 'goals', label: 'Cele', icon: Target },
+    { id: 'pomysly', label: 'Pomysły', icon: Lightbulb },
     { id: 'rules', label: 'Zasady', icon: ShieldCheck },
   ] as const;
 
