@@ -139,9 +139,13 @@ export default function App() {
     });
   };
 
+  // Nie zapisuj pustej listy zanim skończy się pierwszy fetch — inaczej nadpisujemy
+  // user_projects wartością [] i kasujemy dane z poprzedniej sesji zanim migration z LS zadziała.
+  // Gdy użytkownik doda projekt przed końcem fetchu, zapisujemy (projects.length > 0).
   useEffect(() => {
+    if (!hasCompletedTimelineBootstrap && projects.length === 0) return;
     localStorage.setItem('user_projects', JSON.stringify(projects));
-  }, [projects]);
+  }, [projects, hasCompletedTimelineBootstrap]);
 
   // Handle Dark Mode
   useEffect(() => {
@@ -509,36 +513,11 @@ export default function App() {
     ? sortTasks(queueTasksBase, QUEUE_DATE)
     : sortTasksByPriority(queueTasksBase);
 
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id;
-    const overId = over.id;
-
-    if (activeId === overId) return;
-
-    const activeTask = allTasks.find(t => t.id === activeId);
-    if (!activeTask) return;
-
-    const isOverQueue = overId === 'queue' || allTasks.find(t => t.id === overId)?.date === QUEUE_DATE;
-    const isOverToday = overId === 'today' || allTasks.find(t => t.id === overId)?.date === selectedDateStr;
-
-    if (isOverQueue && activeTask.date !== QUEUE_DATE) {
-      if (activeTask.is_recurring) return;
-      if (activeId.toString().startsWith('proj_task_')) {
-        updateProjectTask(activeId.toString(), pt => ({ ...pt, date: QUEUE_DATE }));
-      } else {
-        setTasks(prev => prev.map(t => t.id === activeId ? { ...t, date: QUEUE_DATE } : t));
-      }
-    } else if (isOverToday && activeTask.date !== selectedDateStr) {
-      if (activeId.toString().startsWith('proj_task_')) {
-        updateProjectTask(activeId.toString(), pt => ({ ...pt, date: selectedDateStr }));
-      } else {
-        setTasks(prev => prev.map(t => t.id === activeId ? { ...t, date: selectedDateStr } : t));
-      }
-    }
-  };
+  // Nie zmieniamy `date` zadań podczas dragOver: wtedy przy dragEnd stan ma jeszcze starą datę
+  // z bazy, warunek `activeTask.date !== finalDate` jest spełniony i zapis do Supabase się wykonuje.
+  // Gdybyśmy tu ustawiali QUEUE_DATE / selectedDateStr, po puszczeniu nad kolejką obie daty byłyby
+  // już zsynchronizowane lokalnie i pomijalibyśmy UPDATE — po odświeżeniu zadanie wracało na listę „dziś”.
+  const handleDragOver = (_event: DragOverEvent) => {};
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;

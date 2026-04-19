@@ -86,12 +86,18 @@ ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_timelines ENABLE ROW LEVEL SECURITY;
 
--- Utworzenie polityk dostępu (Policies) - pozwalają na wszystkie operacje (odczyt, zapis, usuwanie)
+-- Polityki RLS — DROP przed CREATE, żeby skrypt dało się bezpiecznie uruchomić ponownie (idempotentnie)
 -- W środowisku produkcyjnym warto je ograniczyć tylko do zalogowanego użytkownika (auth.uid() = user_id)
+DROP POLICY IF EXISTS "Allow all operations for recurring_tasks" ON recurring_tasks;
+DROP POLICY IF EXISTS "Allow all operations for tasks" ON tasks;
+DROP POLICY IF EXISTS "Allow all operations for subtasks" ON subtasks;
+DROP POLICY IF EXISTS "Allow all operations for payments" ON payments;
+DROP POLICY IF EXISTS "Allow all operations for daily_notes" ON daily_notes;
+DROP POLICY IF EXISTS "Allow all operations for daily_timelines" ON daily_timelines;
+
 CREATE POLICY "Allow all operations for recurring_tasks" ON recurring_tasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for tasks" ON tasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for subtasks" ON subtasks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for payments" ON payments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations for daily_notes" ON daily_notes FOR ALL USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "Allow all operations for daily_timelines" ON daily_timelines;
 CREATE POLICY "Allow all operations for daily_timelines" ON daily_timelines FOR ALL USING (true) WITH CHECK (true);
