@@ -19,5 +19,6 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Włączenie Row Level Security (RLS)
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
--- Utworzenie polityk dostępu (Policies) - pozwalają na wszystkie operacje (odczyt, zapis, usuwanie)
+-- Polityki RLS — DROP przed CREATE (idempotentne ponowne uruchomienie skryptu)
+DROP POLICY IF EXISTS "Allow all operations for projects" ON projects;
 CREATE POLICY "Allow all operations for projects" ON projects FOR ALL USING (true) WITH CHECK (true);

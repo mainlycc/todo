@@ -7,6 +7,7 @@ import {
   pushRicherTimelinesToSupabase,
 } from '../lib/dailyTimeline';
 import { supabase } from '../lib/supabase';
+import { mergeProjectsAfterFetch } from '../lib/mergeProjects';
 import type {
   DailyTimeline,
   Payment,
@@ -51,12 +52,11 @@ export function useSupabaseInitialData() {
           .select('*, subtasks(*)');
 
         if (tasksError) {
+          // Nie przerywaj całego bootstrapu — inaczej projekty, notatki itd. w ogóle się nie załadują
+          // (np. brak relacji subtasks / stary schemat), a użytkownik widzi „nic się nie zapisuje”.
           console.error('Error fetching tasks:', tasksError);
-          throw tasksError;
-        }
-
-        console.log('Tasks fetched:', tasksData?.length);
-        if (tasksData) {
+        } else if (tasksData) {
+          console.log('Tasks fetched:', tasksData.length);
           setTasks(
             tasksData.map(t => ({
               ...t,
@@ -165,7 +165,7 @@ export function useSupabaseInitialData() {
             if (lt === 'mine' || lt === 'theirs') return { ...p, turn: lt as ProjectTurn };
             return { ...p, turn: 'mine' satisfies ProjectTurn };
           });
-          setProjects(merged);
+          setProjects(prev => mergeProjectsAfterFetch(prev, merged));
         } else {
           const saved = localStorage.getItem('user_projects');
           if (saved) {
@@ -182,9 +182,9 @@ export function useSupabaseInitialData() {
                   .select();
 
                 if (!insertError && insertedData) {
-                  setProjects(insertedData);
+                  setProjects(prev => mergeProjectsAfterFetch(prev, insertedData as Project[]));
                 } else {
-                  setProjects(parsed);
+                  setProjects(prev => mergeProjectsAfterFetch(prev, parsed as Project[]));
                 }
               }
             } catch {

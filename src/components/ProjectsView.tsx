@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Briefcase,
@@ -52,13 +52,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import { insertProjectWithSchemaFallback } from '../lib/projectSupabaseInsert';
 import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { ANONYMOUS_USER_ID } from '../constants';
 import { getNotionStatusLabel, matchesInProgressStatus } from '../lib/notionClientStatusFilter';
 
 interface ProjectsViewProps {
   projects: Project[];
-  setProjects: (projects: Project[]) => void;
+  setProjects: Dispatch<SetStateAction<Project[]>>;
   payments: Payment[];
   /** Ustawiane z listy zadań — otwórz od razu szczegóły projektu o tym id */
   openProjectId?: string | null;
@@ -90,6 +91,7 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
   const [newProjectType, setNewProjectType] = useState<'own' | 'client'>('own');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'created_at' | 'type' | 'title'>('created_at');
+  const [projectInsertError, setProjectInsertError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!openProjectId) return;
@@ -125,6 +127,8 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
       return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     };
 
+    setProjectInsertError(null);
+
     const newProject: Project = {
       id: generateId(),
       user_id: ANONYMOUS_USER_ID,
@@ -143,7 +147,7 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
     };
 
     // Update local state first for immediate feedback
-    setProjects([newProject, ...projects]);
+    setProjects(prev => [newProject, ...prev]);
     setNewProjectTitle('');
     setIsAddingProject(false);
     setExpandedProjectId(newProject.id);
@@ -155,13 +159,28 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
 
     // Nie wysyłaj pól, które są puste/null — jeśli dana kolumna nie istnieje w DB (np. deadline),
     // PostgREST odrzuci insert/update nawet gdy wartość jest null.
-    const row: any = { ...newProject };
+    const row: Record<string, unknown> = { ...newProject };
     if (row.deadline == null || row.deadline === '') delete row.deadline;
 
-    const { error } = await supabase.from('projects').insert([row]);
+    const newId = newProject.id;
+    const { data: inserted, error } = await insertProjectWithSchemaFallback(row);
     if (error) {
+      const msg = error.message || 'Nie udało się zapisać projektu w Supabase.';
       console.error('Error adding project to Supabase:', error);
-      // We keep it locally even if Supabase fails, but we could optionally revert here
+      setProjectInsertError(msg);
+      setProjects(prev => prev.filter(p => p.id !== newId));
+      setExpandedProjectId(null);
+      setIsAddingProject(true);
+      setNewProjectTitle(newProject.title);
+      return;
+    }
+    const saved = inserted?.[0] as Project | undefined;
+    if (saved) {
+      setProjects(prev =>
+        [saved, ...prev.filter(p => p.id !== saved.id)].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+      );
     }
   };
 
@@ -269,15 +288,28 @@ export function ProjectsView({ projects, setProjects, payments, openProjectId, o
         </div>
       </div>
 
+      {projectInsertError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/35 dark:text-red-100 max-w-3xl"
+        >
+          <strong className="font-semibold">Zapis projektu nie powiódł się:</strong>{' '}
+          <span className="opacity-95">{projectInsertError}</span>
+        </div>
+      )}
+
       <div className="flex-1 pr-2 pb-8">
         {isAddingProject && (
-          <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 mb-6">
+          <div className="max-w-md w-full mx-auto bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-5 sm:p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200 mb-6">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+              Nazwa projektu
+            </label>
             <input
               type="text"
               value={newProjectTitle}
               onChange={(e) => setNewProjectTitle(e.target.value)}
-              placeholder="Nazwa projektu..."
-              className="w-full text-xl font-bold bg-transparent border-none focus:ring-0 text-slate-800 dark:text-white placeholder:text-slate-400"
+              placeholder="Np. Landing, kampania Q2…"
+              className="w-full max-w-full min-w-0 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/40 px-3 py-2.5 text-base font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleAddProject()}
             />
@@ -819,6 +851,33 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
   const [notesExpanded, setNotesExpanded] = useState(false);
   const [notesOverlayLayout, setNotesOverlayLayout] = useState(() => readExpandOverlayLayout());
 
+  /** Aktualne props / draft — useEditor trzyma pierwszy `onUpdate`; bez refów każdy autosave notatek
+   *  nadpisywałby Supabase starą wartością `priority` (i innymi polami), bo spready `project` pochodziły ze starego zamknięcia. */
+  const projectPropRef = useRef(project);
+  projectPropRef.current = project;
+  const isEditingRef = useRef(isEditing);
+  isEditingRef.current = isEditing;
+  const draftEditRef = useRef({
+    editTitle,
+    editDesc,
+    editColor,
+    editLink,
+    editEmoji,
+    editType,
+    editDeadline,
+    editPriority,
+  });
+  draftEditRef.current = {
+    editTitle,
+    editDesc,
+    editColor,
+    editLink,
+    editEmoji,
+    editType,
+    editDeadline,
+    editPriority,
+  };
+
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -874,7 +933,24 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     onUpdate: ({ editor }) => {
       let html = editor.getHTML();
       if (editor.isEmpty) html = '';
-      onUpdate({ ...project, notes: html });
+      const p = projectPropRef.current;
+      if (isEditingRef.current) {
+        const d = draftEditRef.current;
+        onUpdate({
+          ...p,
+          notes: html,
+          title: d.editTitle,
+          description: d.editDesc,
+          color: d.editColor,
+          link: d.editLink,
+          emoji: d.editEmoji,
+          type: d.editType,
+          deadline: d.editDeadline.trim() ? d.editDeadline.trim() : null,
+          priority: d.editPriority,
+        });
+      } else {
+        onUpdate({ ...p, notes: html });
+      }
     },
   });
 
