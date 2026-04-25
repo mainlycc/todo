@@ -1600,12 +1600,16 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
               }}
               role="dialog"
               aria-modal="true"
-              aria-label="Notatki projektu — rozszerzony widok"
+              aria-label={`Notatki projektu — rozszerzony widok: ${project.title}`}
             >
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-tp-surface shrink-0">
                 <div className="flex items-center gap-2 min-w-0 text-slate-800 dark:text-white">
                   <FileText className="w-5 h-5 text-indigo-500 dark:text-tp-accent shrink-0" />
-                  <h2 className="font-semibold truncate">Notatki</h2>
+                  <h2 className="font-semibold truncate">
+                    Notatki —{' '}
+                    {project.emoji ? <span className="mr-1">{project.emoji}</span> : null}
+                    {project.title}
+                  </h2>
                 </div>
                 <button
                   type="button"

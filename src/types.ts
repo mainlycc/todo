@@ -157,6 +157,8 @@ export interface IdeaRow {
   id: string;
   user_id: string;
   content: string;
+  /** Zgodne z Select „Typ notatki” w Notion (kolumna `note_type` po migracji sql/14_ideas_note_type.sql). */
+  note_type?: string | null;
   notion_page_id: string | null;
   created_at: string;
 }

@@ -464,17 +464,50 @@ export default function App() {
     [allTasks, selectedDateStr, completionDates]
   );
 
+  const WORK_BLOCK_HIDDEN_DATES_LS_KEY = 'daily_timeline_work_block_hidden_dates';
+  const isWorkBlockEvent = (e: { type?: string; title?: string }) =>
+    (e.type || '') === 'other' && (e.title || '').trim().toLowerCase() === 'praca';
+
+  const readWorkBlockHiddenDates = (): Record<string, true> => {
+    try {
+      const raw = localStorage.getItem(WORK_BLOCK_HIDDEN_DATES_LS_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== 'object') return {};
+      return parsed as Record<string, true>;
+    } catch {
+      return {};
+    }
+  };
+
+  const setWorkBlockHiddenForDate = (date: string, hidden: boolean) => {
+    try {
+      const map = readWorkBlockHiddenDates();
+      if (hidden) map[date] = true;
+      else delete map[date];
+      localStorage.setItem(WORK_BLOCK_HIDDEN_DATES_LS_KEY, JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const isWorkBlockHiddenForDate = (date: string) => {
+    const map = readWorkBlockHiddenDates();
+    return !!map[date];
+  };
+
   // Jeśli są ukończone zadania do pokazania, a harmonogram nie ma bloku „Praca”,
   // automatycznie go tworzymy dla wybranego dnia (żeby lista zawsze była widoczna w tym jednym bloku).
   useEffect(() => {
     if (!hasCompletedTimelineBootstrap) return;
     if (!selectedDateStr) return;
     if (workBlockDoneTasksForDay.length === 0) return;
+    if (isWorkBlockHiddenForDate(selectedDateStr)) return;
     const current = dailyTimelines[selectedDateStr];
     // Brak zapisanego wiersza: bierzemy domyślny szablon (m.in. sen), żeby nie zapisać samej „Pracy” i nie nadpisać później pełnych danych z API.
     const base = current ?? emptyDailyTimelineFallback;
     const events = base.events || [];
-    const hasWorkBlock = events.some(e => e.type === 'other' && e.title.trim().toLowerCase() === 'praca');
+    const hasWorkBlock = events.some(isWorkBlockEvent);
     if (hasWorkBlock) return;
 
     const nextTimeline: DailyTimeline = {
@@ -1037,6 +1070,18 @@ export default function App() {
   };
 
   const handleSaveDailyTimelineForDate = async (date: string, timeline: DailyTimeline) => {
+    // Jeśli użytkownik ręcznie usunął blok „Praca”, zapamiętujemy to per-data,
+    // żeby automatyczne „bootstrapowanie” nie dodawało go z powrotem.
+    try {
+      const prev = dailyTimelines[date];
+      const prevHasWork = !!(prev?.events || []).some(isWorkBlockEvent);
+      const nextHasWork = !!(timeline?.events || []).some(isWorkBlockEvent);
+      if (prevHasWork && !nextHasWork) setWorkBlockHiddenForDate(date, true);
+      if (nextHasWork) setWorkBlockHiddenForDate(date, false);
+    } catch {
+      /* ignore */
+    }
+
     const optimistic: DailyTimeline = {
       ...timeline,
       user_id: ANONYMOUS_USER_ID,
