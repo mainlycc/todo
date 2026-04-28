@@ -22,15 +22,26 @@ import {
   RichNoteFormattingMenuBar,
 } from './richNoteEditor';
 import { readExpandOverlayLayout } from '../lib/expandNoteOverlayLayout';
-import { Goal, Subtask } from '../types';
+import { Goal, Subtask, Task } from '../types';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { ANONYMOUS_USER_ID } from '../constants';
+import { QUEUE_DATE } from '../constants/tasks';
 
 const newGoalId = () =>
   typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `goal_${Date.now()}`;
 
-export function GoalsView() {
+export function GoalsView({
+  tasks,
+  onAddTaskToGoal,
+  onToggleTaskComplete,
+  onDeleteTask,
+}: {
+  tasks: Task[];
+  onAddTaskToGoal: (goalId: string, title: string) => void | Promise<void>;
+  onToggleTaskComplete: (taskId: string) => void | Promise<void>;
+  onDeleteTask: (taskId: string) => void | Promise<void>;
+}) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
@@ -165,8 +176,8 @@ export function GoalsView() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-8">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col">
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Cele</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Definiuj i realizuj swoje długoterminowe cele</p>
@@ -183,7 +194,7 @@ export function GoalsView() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 flex-1 overflow-hidden">
         {/* Zasady Celów */}
         <div className="xl:col-span-1 space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 p-6 shadow-sm">
+          <div className="bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 p-6 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 mb-4 text-indigo-600 dark:text-indigo-400">
               <Info className="w-5 h-5" />
               <h3 className="font-bold uppercase tracking-wider text-xs">Zasady dobrych celów (SMART)</h3>
@@ -214,7 +225,7 @@ export function GoalsView() {
         </div>
 
         {/* Lista Celów */}
-        <div className="xl:col-span-2 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar pb-8">
+        <div className="xl:col-span-2 overflow-y-auto pr-2 custom-scrollbar pb-8">
           {isAddingGoal && (
             <div className="bg-white dark:bg-tp-surface rounded-2xl border-2 border-indigo-500 p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-200">
               <input
@@ -244,17 +255,23 @@ export function GoalsView() {
               <p className="text-sm">Dodaj swój pierwszy cel, aby zacząć go realizować.</p>
             </div>
           ) : (
-            goals.map((goal) => (
-              <GoalItem
-                key={goal.id}
-                goal={goal}
-                isExpanded={expandedGoalId === goal.id}
-                onToggleExpand={() => setExpandedGoalId(expandedGoalId === goal.id ? null : goal.id)}
-                onUpdate={handleUpdateGoal}
-                onDelete={() => handleDeleteGoal(goal.id)}
-                onToggleComplete={() => toggleGoalCompletion(goal)}
-              />
-            ))
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+              {goals.map((goal) => (
+                <GoalItem
+                  key={goal.id}
+                  goal={goal}
+                  isExpanded={expandedGoalId === goal.id}
+                  onToggleExpand={() => setExpandedGoalId(expandedGoalId === goal.id ? null : goal.id)}
+                  onUpdate={handleUpdateGoal}
+                  onDelete={() => handleDeleteGoal(goal.id)}
+                  onToggleComplete={() => toggleGoalCompletion(goal)}
+                tasks={tasks}
+                onAddTaskToGoal={onAddTaskToGoal}
+                onToggleTaskComplete={onToggleTaskComplete}
+                onDeleteTask={onDeleteTask}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -422,6 +439,10 @@ function GoalItem({
   onUpdate,
   onDelete,
   onToggleComplete,
+  tasks,
+  onAddTaskToGoal,
+  onToggleTaskComplete,
+  onDeleteTask,
 }: {
   goal: Goal;
   isExpanded: boolean;
@@ -429,15 +450,33 @@ function GoalItem({
   onUpdate: (goal: Goal) => void;
   onDelete: () => void;
   onToggleComplete: () => void;
+  tasks: Task[];
+  onAddTaskToGoal: (goalId: string, title: string) => void | Promise<void>;
+  onToggleTaskComplete: (taskId: string) => void | Promise<void>;
+  onDeleteTask: (taskId: string) => void | Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(goal.title);
   const [editDesc, setEditDesc] = useState(goal.description || '');
   const [newSubtask, setNewSubtask] = useState('');
+  const [newGoalTaskTitle, setNewGoalTaskTitle] = useState('');
+  const completedSubtasks = (goal.subtasks || []).filter((s) => s.completed).length;
+  const totalSubtasks = (goal.subtasks || []).length;
+  const goalQueueTasks = tasks
+    .filter((t) => (t.goal_id || null) === goal.id)
+    .filter((t) => t.date === QUEUE_DATE)
+    .filter((t) => !t.is_recurring);
 
   const handleSave = () => {
     onUpdate({ ...goal, title: editTitle, description: editDesc });
     setIsEditing(false);
+  };
+
+  const handleAddGoalTask = async () => {
+    const trimmed = newGoalTaskTitle.trim();
+    if (!trimmed) return;
+    await onAddTaskToGoal(goal.id, trimmed);
+    setNewGoalTaskTitle('');
   };
 
   const handleAddSubtask = () => {
@@ -463,56 +502,163 @@ function GoalItem({
   return (
     <div
       className={cn(
-        'bg-white dark:bg-tp-surface rounded-2xl border transition-all duration-300',
-        isExpanded ? 'border-indigo-200 dark:border-indigo-800 shadow-md' : 'border-slate-200 dark:border-white/6 shadow-sm hover:border-slate-300 dark:hover:border-white/10'
+        'relative bg-white dark:bg-tp-surface rounded-2xl border border-slate-200 dark:border-white/6 shadow-sm flex flex-col group hover:shadow-md transition-shadow',
+        isExpanded ? 'md:col-span-2 lg:col-span-3 xl:col-span-3' : 'min-h-[180px]'
       )}
     >
-      <div className="p-5 flex items-center gap-4">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleComplete();
-          }}
-          className="flex-shrink-0"
-        >
-          {goal.completed ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <Circle className="w-6 h-6 text-slate-300 dark:text-slate-700 hover:text-indigo-400 transition-colors" />}
-        </button>
+      <div className="mb-3 pb-3 border-b border-slate-100 dark:border-white/6 p-5">
+        <div className="flex items-start gap-3 min-w-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete();
+            }}
+            className="mt-0.5 shrink-0"
+            title={goal.completed ? 'Oznacz jako nieukończony' : 'Oznacz jako ukończony'}
+          >
+            {goal.completed ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+            ) : (
+              <Circle className="w-6 h-6 text-slate-300 dark:text-slate-700 hover:text-indigo-400 transition-colors" />
+            )}
+          </button>
 
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggleExpand}>
-          {isEditing ? (
-            <input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full font-bold text-lg bg-transparent border-b border-indigo-500 focus:outline-none text-slate-800 dark:text-white"
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <h3 className={cn('font-bold text-lg truncate transition-all', goal.completed ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-slate-100')}>{goal.title}</h3>
-          )}
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggleExpand} title={isExpanded ? 'Zwiń' : 'Rozwiń'}>
+            {isEditing ? (
+              <input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full text-base font-bold bg-transparent border-b border-slate-200 dark:border-white/10 pb-1 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-white"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <h3
+                className={cn(
+                  'text-sm font-bold uppercase tracking-wide whitespace-normal break-words leading-snug',
+                  goal.completed ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-slate-100'
+                )}
+              >
+                {goal.title}
+              </h3>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <button onClick={handleSave} className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors">
-              <Save className="w-5 h-5" />
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {totalSubtasks > 0 ? (
+              <span>
+                Kroki: {completedSubtasks}/{totalSubtasks}
+              </span>
+            ) : (
+              <span>Brak kroków</span>
+            )}
+          </div>
+
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            {isEditing ? (
+              <button onClick={handleSave} className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Zapisz">
+                <Save className="w-4 h-4" />
+              </button>
+            ) : (
+              <button onClick={() => setIsEditing(true)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="Edytuj">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="Usuń">
+              <Trash2 className="w-4 h-4" />
             </button>
-          ) : (
-            <button onClick={() => setIsEditing(true)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors">
-              <Edit2 className="w-4 h-4" />
+            <button onClick={onToggleExpand} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-lg transition-colors" title={isExpanded ? 'Zwiń' : 'Rozwiń'}>
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
-          )}
-          <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
-            <Trash2 className="w-4 h-4" />
-          </button>
-          <button onClick={onToggleExpand} className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-tp-muted rounded-lg transition-colors">
-            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-          </button>
+          </div>
         </div>
       </div>
 
+      {!isExpanded && (
+        <div className="px-5 pb-5">
+          <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-4">
+            {goal.description?.trim()
+              ? goal.description
+              : 'Brak opisu. Rozwiń kartę i kliknij edytuj, żeby dodać szczegóły.'}
+          </p>
+        </div>
+      )}
+
       {isExpanded && (
         <div className="px-5 pb-6 pt-2 border-t border-slate-100 dark:border-white/6 space-y-6 animate-in fade-in duration-200">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Zadania tego celu (w kolejce)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newGoalTaskTitle}
+                onChange={(e) => setNewGoalTaskTitle(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void handleAddGoalTask()}
+                placeholder="Dodaj zadanie i wrzuć do kolejki…"
+                className="flex-1 bg-white dark:bg-tp-surface border border-slate-200 dark:border-white/6 rounded-xl px-4 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-700 dark:text-slate-300 shadow-sm"
+              />
+              <button
+                type="button"
+                onClick={() => void handleAddGoalTask()}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors shadow-sm"
+                title="Dodaj zadanie do kolejki"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+
+            {goalQueueTasks.length === 0 ? (
+              <div className="text-xs text-slate-500 dark:text-slate-400 italic">
+                Brak zadań przypiętych do tego celu w kolejce.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {goalQueueTasks.map((t) => (
+                  <div key={t.id} className="flex items-center gap-3 group">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onToggleTaskComplete(t.id);
+                      }}
+                      className="shrink-0"
+                      title={t.completed ? 'Oznacz jako nieukończone' : 'Oznacz jako ukończone'}
+                    >
+                      {t.completed ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-slate-300 dark:text-slate-700 hover:text-indigo-400 transition-colors" />
+                      )}
+                    </button>
+                    <span
+                      className={cn(
+                        'text-sm flex-1 leading-snug',
+                        t.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-300'
+                      )}
+                    >
+                      {t.title}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void onDeleteTask(t.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all"
+                      title="Usuń zadanie"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Opis celu</label>
             {isEditing ? (

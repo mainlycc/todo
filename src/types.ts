@@ -39,6 +39,9 @@ export interface Task {
   metric_count?: number | null;
   project_id?: string;
   project_title?: string;
+  /** Przypięcie zadania do celu (Goals) */
+  goal_id?: string | null;
+  goal_title?: string;
   kanban_status?: KanbanStatus;
 }
 
@@ -150,7 +153,8 @@ export type ViewMode =
   | 'goals'
   | 'projects'
   | 'clients'
-  | 'pomysly';
+  | 'pomysly'
+  | 'tinder';
 
 /** Wiersz tabeli `ideas` (pomysły → Notion + Supabase). */
 export interface IdeaRow {

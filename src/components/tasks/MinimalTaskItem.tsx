@@ -6,6 +6,7 @@ import { cn } from '../../utils';
 export interface MinimalTaskItemProps {
   task: Task;
   projects?: Project[];
+  goalTitle?: string | null;
   onToggleComplete: (id: string) => Promise<void> | void;
   onUpdateTask: (task: Task) => Promise<void> | void;
   onAddSubtask: (taskId: string, title: string) => Promise<void> | void;
@@ -21,6 +22,7 @@ export interface MinimalTaskItemProps {
 export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
   task,
   projects,
+  goalTitle,
   onToggleComplete,
   onUpdateTask,
   onAddSubtask,
@@ -103,6 +105,70 @@ export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
 
   const metricCount = task.metric_kind ? (task.metric_count ?? 0) : null;
 
+  const projectBadge = task.project_title ? (
+    matchedProject && onOpenProject && !task.completed ? (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation();
+          onOpenProject(matchedProject.id);
+        }}
+        title={`Otwórz projekt: ${task.project_title}`}
+        className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap inline-flex items-center gap-0.5 w-fit cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        style={{
+          backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
+          color: projectColor || 'inherit',
+          borderColor: projectColor ? `${projectColor}30` : 'transparent',
+        }}
+      >
+        {matchedProject?.emoji ? matchedProject.emoji : null}
+        {task.project_title}
+      </button>
+    ) : (
+      <span
+        className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap inline-flex items-center gap-0.5 w-fit"
+        style={{
+          backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
+          color: projectColor || 'inherit',
+          borderColor: projectColor ? `${projectColor}30` : 'transparent',
+        }}
+      >
+        {matchedProject?.emoji ? matchedProject.emoji : null}
+        {task.project_title}
+      </span>
+    )
+  ) : task.category ? (
+    matchedProject && onOpenProject && !task.completed ? (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation();
+          onOpenProject(matchedProject.id);
+        }}
+        title={`Otwórz projekt: ${task.category}`}
+        className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap w-fit text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-tp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      >
+        {task.category}
+      </button>
+    ) : (
+      <span
+        className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap w-fit text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
+        title="Projekt"
+      >
+        {task.category}
+      </span>
+    )
+  ) : null;
+
+  const goalBadge = goalTitle ? (
+    <span
+      className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap w-fit text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
+      title={`Cel: ${goalTitle}`}
+    >
+      Cel: {goalTitle}
+    </span>
+  ) : null;
+
   return (
     <div
       className={cn(
@@ -110,7 +176,7 @@ export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
         isDragging && 'opacity-50'
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <div
           {...dragHandleProps}
           className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
@@ -129,105 +195,61 @@ export const MinimalTaskItem: React.FC<MinimalTaskItemProps> = ({
           onChange={() => onToggleComplete(task.id)}
           className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
         />
-        <input
-          type="text"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            'text-base flex-1 bg-transparent border-none focus:ring-0 p-0 m-0 focus:outline-none',
-            task.completed
-              ? 'line-through text-slate-400 dark:text-slate-500'
-              : 'text-slate-800 dark:text-slate-200'
-          )}
-        />
-        {task.metric_kind && (
-          <span
-            className={cn(
-              "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold flex-shrink-0",
-              task.completed
-                ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
-                : "bg-slate-50 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2 min-w-0">
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              className={cn(
+                'text-base w-full bg-transparent border-none focus:ring-0 p-0 m-0 focus:outline-none min-w-0',
+                task.completed
+                  ? 'line-through text-slate-400 dark:text-slate-500'
+                  : 'text-slate-800 dark:text-slate-200'
+              )}
+            />
+            {task.metric_kind && (
+              <span
+                className={cn(
+                  "flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold flex-shrink-0 mt-0.5",
+                  task.completed
+                    ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+                    : "bg-slate-50 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+                )}
+                title={
+                  task.metric_kind === 'cv_sent'
+                    ? 'Wysłane CV'
+                    : task.metric_kind === 'client_inquiry_sent'
+                      ? 'Wysłane zapytania do klientów'
+                      : 'Licznik'
+                }
+              >
+                <span className="tabular-nums leading-none">{metricCount}</span>
+                <button
+                  type="button"
+                  className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const current = task.metric_count ?? 0;
+                    onUpdateTask({ ...task, metric_count: current + 1 });
+                  }}
+                  aria-label="Zwiększ licznik"
+                  title="Dodaj +1"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </span>
             )}
-            title={
-              task.metric_kind === 'cv_sent'
-                ? 'Wysłane CV'
-                : task.metric_kind === 'client_inquiry_sent'
-                  ? 'Wysłane zapytania do klientów'
-                  : 'Licznik'
-            }
-          >
-            <span className="tabular-nums leading-none">{metricCount}</span>
-            <button
-              type="button"
-              className="p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              onClick={(e) => {
-                e.stopPropagation();
-                const current = task.metric_count ?? 0;
-                onUpdateTask({ ...task, metric_count: current + 1 });
-              }}
-              aria-label="Zwiększ licznik"
-              title="Dodaj +1"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          </span>
-        )}
-        {task.project_title ? (
-          matchedProject && onOpenProject && !task.completed ? (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                onOpenProject(matchedProject.id);
-              }}
-              title={`Otwórz projekt: ${task.project_title}`}
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5 cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              style={{
-                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
-                color: projectColor || 'inherit',
-                borderColor: projectColor ? `${projectColor}30` : 'transparent',
-              }}
-            >
-              {matchedProject?.emoji ? matchedProject.emoji : null}
-              {task.project_title}
-            </button>
-          ) : (
-            <span
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 inline-flex items-center gap-0.5"
-              style={{
-                backgroundColor: projectColor ? `${projectColor}15` : 'transparent',
-                color: projectColor || 'inherit',
-                borderColor: projectColor ? `${projectColor}30` : 'transparent',
-              }}
-            >
-              {matchedProject?.emoji ? matchedProject.emoji : null}
-              {task.project_title}
-            </span>
-          )
-        ) : task.category ? (
-          matchedProject && onOpenProject && !task.completed ? (
-            <button
-              type="button"
-              onClick={e => {
-                e.stopPropagation();
-                onOpenProject(matchedProject.id);
-              }}
-              title={`Otwórz projekt: ${task.category}`}
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60 cursor-pointer hover:bg-slate-100 dark:hover:bg-tp-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-            >
-              {task.category}
-            </button>
-          ) : (
-            <span
-              className="text-[9px] px-1.5 py-0.5 rounded border font-bold uppercase tracking-wider whitespace-nowrap flex-shrink-0 ml-1.5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-tp-muted/60"
-              title="Projekt"
-            >
-              {task.category}
-            </span>
-          )
-        ) : null}
+          </div>
+          {(projectBadge || goalBadge) && (
+            <div className="mt-1 flex flex-wrap gap-1.5 items-center">
+              {projectBadge}
+              {goalBadge}
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             type="button"

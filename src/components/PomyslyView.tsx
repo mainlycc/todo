@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { ANONYMOUS_USER_ID, IDEA_NOTE_TYPE_OPTIONS, type IdeaNoteType } from '../constants';
+import { dedupeIdeasByNotionPage } from '../lib/ideasDedupe';
 import { supabase } from '../lib/supabase';
 import type { IdeaRow } from '../types';
 import { cn } from '../utils';
@@ -178,7 +179,7 @@ export function PomyslyView() {
       setLoaded(true);
       return;
     }
-    setIdeas((data ?? []) as IdeaRow[]);
+    setIdeas(dedupeIdeasByNotionPage((data ?? []) as IdeaRow[]));
     setLoaded(true);
   }, []);
 
@@ -233,7 +234,7 @@ export function PomyslyView() {
       return;
     }
 
-    setIdeas((prev) => [inserted as IdeaRow, ...prev]);
+    setIdeas((prev) => dedupeIdeasByNotionPage([inserted as IdeaRow, ...prev]));
     setDraft('');
 
     if (notionError) {

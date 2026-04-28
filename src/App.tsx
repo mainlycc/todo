@@ -1,4 +1,4 @@
-import { format, isBefore, startOfDay, startOfMonth } from 'date-fns';
+import { format, isBefore, parseISO, startOfDay, startOfMonth } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -6,6 +6,7 @@ import type { DragEndEvent, DragOverEvent } from '@dnd-kit/core';
 import { AppHeader } from './components/AppHeader';
 import { CalendarView } from './components/CalendarView';
 import { ClientsView } from './components/ClientsView';
+import { DailyNotePanel } from './components/DailyNotePanel';
 import { DaySidePanel } from './components/DaySidePanel';
 import { ExpectedPaymentsView } from './components/ExpectedPaymentsView';
 import { FocusMode } from './components/FocusMode';
@@ -15,6 +16,7 @@ import { PomyslyView } from './components/PomyslyView';
 import { ProjectsView } from './components/ProjectsView';
 import { RulesView } from './components/RulesView';
 import { Sidebar } from './components/Sidebar';
+import { TinderIdeasView } from './components/TinderIdeasView';
 import { TaskTimer } from './components/TaskTimer';
 import { TasksWorkspace } from './components/TasksWorkspace';
 import { ANONYMOUS_USER_ID } from './constants';
@@ -103,6 +105,7 @@ export default function App() {
     hasCompletedTimelineBootstrap,
     projects,
     setProjects,
+    goals,
     taskOrder,
     setTaskOrder,
   } = useSupabaseInitialData();
@@ -324,6 +327,13 @@ export default function App() {
     const name = (task.project_title || task.category || '').trim();
     if (!name) return undefined;
     return projects.find(p => p.title.toLowerCase() === name.toLowerCase());
+  };
+
+  const getGoalTitleForTask = (task: Task): string | null => {
+    const gid = task.goal_id || null;
+    if (!gid) return null;
+    const g = goals.find(x => x.id === gid);
+    return g?.title ?? null;
   };
 
   const normalizeTaskProjectMeta = (task: Task): Task => {
@@ -808,6 +818,43 @@ export default function App() {
             });
         }
       }
+    }
+  };
+
+  const handleAddTaskToGoal = async (goalId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([
+        {
+          user_id: ANONYMOUS_USER_ID,
+          title: trimmed,
+          date: QUEUE_DATE,
+          completed: false,
+          priority: 'medium',
+          category: '',
+          color: 'indigo',
+          pomodoros_completed: 0,
+          metric_kind: null,
+          metric_count: null,
+          notes: '',
+          due_date: null,
+          goal_id: goalId,
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error('Error adding goal task:', error);
+      alert('Błąd podczas dodawania zadania do celu: ' + error.message);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      const row = data[0] as Task;
+      setTasks(prev => [{ ...row, subtasks: [] }, ...prev]);
     }
   };
 
@@ -1416,9 +1463,11 @@ export default function App() {
               'mx-auto h-full',
               view === 'tasks' ||
                 view === 'focus' ||
+                view === 'expected_payments' ||
                 view === 'rules' ||
                 view === 'goals' ||
                 view === 'pomysly' ||
+              view === 'tinder' ||
                 view === 'projects' ||
                 view === 'clients'
                 ? 'max-w-7xl'
@@ -1438,6 +1487,7 @@ export default function App() {
                       todayTasks={todayTasks}
                       queueTasks={queueTasks}
                       projects={projects}
+                      getGoalTitleForTask={getGoalTitleForTask}
                       collapseAllTasksSignal={collapseAllTasksSignal}
                       onCollapseAllTasks={() => setCollapseAllTasksSignal(v => v + 1)}
                       onMoveToQueue={handleMoveToQueue}
@@ -1495,13 +1545,48 @@ export default function App() {
             )}
 
             {view === 'expected_payments' && (
-              <ExpectedPaymentsView
-                sortedPayments={sortedPayments}
-                projects={projects}
-                onAddPayment={handleAddPayment}
-                onTogglePaymentRealized={handleTogglePaymentRealized}
-                onDeletePayment={handleDeletePayment}
-              />
+              <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
+                <div className="flex-1 min-w-0 w-full lg:max-w-3xl">
+                  <ExpectedPaymentsView
+                    sortedPayments={sortedPayments}
+                    projects={projects}
+                    onAddPayment={handleAddPayment}
+                    onTogglePaymentRealized={handleTogglePaymentRealized}
+                    onDeletePayment={handleDeletePayment}
+                  />
+                </div>
+                <aside className="w-full lg:w-[440px] xl:w-[500px] lg:flex-shrink-0 lg:sticky lg:top-4 self-start flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-3 px-1">
+                    <label
+                      htmlFor="expected-payments-note-date"
+                      className="text-sm font-medium text-slate-700 dark:text-slate-200 shrink-0"
+                    >
+                      Dzień notatki
+                    </label>
+                    <input
+                      id="expected-payments-note-date"
+                      type="date"
+                      value={selectedDateStr}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (!v) return;
+                        setSelectedDate(startOfDay(parseISO(v)));
+                      }}
+                      className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-tp-surface px-3 py-2 text-sm text-slate-900 dark:text-white shadow-sm"
+                    />
+                    <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+                      {format(selectedDate, 'EEEE, d MMM yyyy', { locale: pl })}
+                    </span>
+                  </div>
+                  <div className="h-[min(560px,calc(100vh-14rem))] min-h-[280px] flex flex-col w-full">
+                    <DailyNotePanel
+                      date={selectedDateStr}
+                      content={dailyNotes[selectedDateStr] || ''}
+                      onChange={handleSaveDailyNote}
+                    />
+                  </div>
+                </aside>
+              </div>
             )}
 
             {view === 'payments_history' && (
@@ -1516,9 +1601,23 @@ export default function App() {
 
             {view === 'rules' && <RulesView />}
 
-            {view === 'goals' && <GoalsView />}
+            {view === 'goals' && (
+              <GoalsView
+                tasks={tasks}
+                onAddTaskToGoal={handleAddTaskToGoal}
+                onToggleTaskComplete={handleToggleComplete}
+                onDeleteTask={handleDelete}
+              />
+            )}
 
             {view === 'pomysly' && <PomyslyView />}
+
+            {view === 'tinder' && (
+              <TinderIdeasView
+                dailyNotes={dailyNotes}
+                onSaveDailyNote={handleSaveDailyNote}
+              />
+            )}
 
             {view === 'projects' && (
               <ProjectsView

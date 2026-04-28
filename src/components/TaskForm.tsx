@@ -7,6 +7,8 @@ interface TaskFormProps {
   onAdd: (title: string, priority: Priority, category: string, color: TaskColor, isRecurring: boolean, dueDate?: string) => void;
   projects: Project[];
   onCreateProject: (title: string) => Promise<Project | null>;
+  /** Dodatkowe klasy na kontenerze (np. usunięcie marginesu w modalu). */
+  className?: string;
 }
 
 const COMMON_EMOJIS = [
@@ -15,7 +17,7 @@ const COMMON_EMOJIS = [
   '📞', '📧', '🚗', '✈️', '⭐', '✅', '🛑', '⏳'
 ];
 
-export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
+export function TaskForm({ onAdd, projects, onCreateProject, className }: TaskFormProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [category, setCategory] = useState(''); // project title (string) for backward compatibility
@@ -82,7 +84,12 @@ export function TaskForm({ onAdd, projects, onCreateProject }: TaskFormProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-visible mb-6 relative z-10 transition-colors">
+    <div
+      className={cn(
+        'bg-white dark:bg-tp-surface rounded-2xl shadow-sm border border-slate-200 dark:border-white/6 overflow-visible mb-6 relative z-10 transition-colors',
+        className
+      )}
+    >
       <form onSubmit={handleSubmit} className="p-4">
         <div className="flex items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-white/10 flex-shrink-0" />

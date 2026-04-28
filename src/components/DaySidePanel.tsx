@@ -20,7 +20,7 @@ export function DaySidePanel({
   workBlockDoneTasksForDay,
 }: DaySidePanelProps) {
   return (
-    <div className="w-[400px] flex-shrink-0">
+    <div className="w-[440px] xl:w-[500px] flex-shrink-0">
       <DailyNotePanel
         date={selectedDateStr}
         content={dailyNoteContent}

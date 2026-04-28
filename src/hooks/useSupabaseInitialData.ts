@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import { mergeProjectsAfterFetch } from '../lib/mergeProjects';
 import type {
   DailyTimeline,
+  Goal,
   Payment,
   PaymentMonthOverride,
   Project,
@@ -27,6 +28,7 @@ export function useSupabaseInitialData() {
   const [dailyTimelines, setDailyTimelines] = useState<Record<string, DailyTimeline>>({});
   const [hasCompletedTimelineBootstrap, setHasCompletedTimelineBootstrap] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [taskOrder, setTaskOrder] = useState<Record<string, string[]>>({});
   const allowPersistTaskOrder = useRef(false);
 
@@ -217,6 +219,18 @@ export function useSupabaseInitialData() {
           }
         }
         allowPersistTaskOrder.current = true;
+
+        // Goals (for goal tags on tasks)
+        const { data: goalsData, error: goalsError } = await supabase
+          .from('goals')
+          .select('*')
+          .eq('user_id', ANONYMOUS_USER_ID)
+          .order('created_at', { ascending: false });
+        if (goalsError) {
+          console.error('Error fetching goals:', goalsError);
+        } else if (goalsData) {
+          setGoals(goalsData as Goal[]);
+        }
       } catch (err: unknown) {
         console.error('Error in fetchData:', err);
         allowPersistTaskOrder.current = true;
@@ -244,6 +258,8 @@ export function useSupabaseInitialData() {
     hasCompletedTimelineBootstrap,
     projects,
     setProjects,
+    goals,
+    setGoals,
     taskOrder,
     setTaskOrder,
     allowPersistTaskOrder,

@@ -14,9 +14,11 @@ interface DailyNotePanelProps {
   date: string;
   content: string;
   onChange: (date: string, content: string) => void;
+  /** Gdy true: treść nie ma wewnętrznego scrolla (bez suwaka). */
+  disableInnerScroll?: boolean;
 }
 
-export function DailyNotePanel({ date, content, onChange }: DailyNotePanelProps) {
+export function DailyNotePanel({ date, content, onChange, disableInnerScroll }: DailyNotePanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [overlayLayout, setOverlayLayout] = useState(() => readExpandOverlayLayout());
 
@@ -88,7 +90,8 @@ export function DailyNotePanel({ date, content, onChange }: DailyNotePanelProps)
       <RichNoteFormattingMenuBar editor={editor} />
       <div
         className={cn(
-          'flex-1 min-h-0 overflow-y-auto cursor-text',
+          'flex-1 min-h-0 cursor-text',
+          disableInnerScroll ? 'overflow-visible' : 'overflow-y-auto',
           expanded ? 'px-2 pt-1' : '',
         )}
         onClick={() => editor?.commands.focus()}

@@ -7,6 +7,7 @@ import { defineConfig, loadEnv } from 'vite';
 import { IDEA_NOTE_TYPE_OPTIONS } from './src/constants';
 import { syncNotionClientsToSupabase } from './scripts/notionClients/syncNotionClients';
 import { createNotionIdeaPage } from './scripts/notionIdeas/createNotionIdeaPage';
+import { syncNotionIdeasToSupabase } from './scripts/notionIdeas/syncNotionIdeas';
 
 /** Domyślna baza Notion dla pomysłów (ID z URL przed `?v=`). */
 const DEFAULT_NOTION_POMYSLY_PARENT_ID = '8c93b9a454f946978cc1cdfa3de6046c';
@@ -140,6 +141,50 @@ function attachNotionApiMiddleware(server: { middlewares: Connect.Server }, env:
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       res.statusCode = 502;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    }
+  });
+
+  server.middlewares.use(async (req, res, next) => {
+    const pathname = req.url?.split('?')[0] ?? '';
+    if (pathname !== '/api/notion-ideas/sync' || (req.method !== 'GET' && req.method !== 'POST')) {
+      return next();
+    }
+    const notionToken = env.NOTION_TOKEN?.trim();
+    const databaseId =
+      env.NOTION_POMYSLY_PARENT_ID?.trim() || DEFAULT_NOTION_POMYSLY_PARENT_ID;
+    const supabaseUrl = env.VITE_SUPABASE_URL?.trim();
+    const supabaseKey =
+      env.SUPABASE_SERVICE_ROLE_KEY?.trim() || env.VITE_SUPABASE_ANON_KEY?.trim();
+    const noteTypePropertyHint = env.NOTION_POMYSLY_NOTE_TYPE_PROPERTY?.trim();
+
+    if (!notionToken || !databaseId || !supabaseUrl || !supabaseKey) {
+      res.statusCode = 503;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(
+        JSON.stringify({
+          ok: false,
+          error:
+            'Brak NOTION_TOKEN / NOTION_POMYSLY_PARENT_ID (lub domyślnego) lub danych Supabase w .env (wymagane przy npm run dev / vite preview).',
+        })
+      );
+      return;
+    }
+
+    try {
+      const result = await syncNotionIdeasToSupabase({
+        notionToken,
+        databaseId,
+        supabaseUrl,
+        supabaseKey,
+        noteTypePropertyHint: noteTypePropertyHint || undefined,
+      });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.end(JSON.stringify({ ok: true, ...result }));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.end(JSON.stringify({ ok: false, error: msg }));
     }

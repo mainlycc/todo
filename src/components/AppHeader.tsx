@@ -17,6 +17,7 @@ const viewTitles: Record<ViewMode, string> = {
   clients: 'Klienci',
   focus: 'Tryb Skupienia',
   pomysly: 'Pomysły',
+  tinder: 'Tinder',
 };
 
 export interface AppHeaderProps {

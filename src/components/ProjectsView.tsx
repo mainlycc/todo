@@ -667,8 +667,8 @@ function ProjectCard({
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="p-1.5 rounded-xl bg-emerald-500/15 dark:bg-emerald-400/15 border border-emerald-500/30 dark:border-emerald-400/30 shadow-sm">
-              <DollarSign className="w-4 h-4 text-emerald-700 dark:text-emerald-300" />
+            <div className="p-1.5 rounded-xl bg-white/95 dark:bg-slate-950/95 border border-slate-200/95 dark:border-slate-500 shadow-sm ring-1 ring-black/[0.07] dark:ring-white/12">
+              <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
           </div>
         )}
@@ -898,7 +898,8 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
     }
     let cancelled = false;
     setClientsLoading(true);
-    supabase
+    Promise.resolve(
+      supabase
       .from('notion_clients')
       .select('*')
       .eq('user_id', ANONYMOUS_USER_ID)
@@ -914,6 +915,7 @@ function ProjectDetail({ project, onBack, onUpdate, onDelete, onToggleComplete }
         const filtered = rows.filter(r => matchesInProgressStatus(getNotionStatusLabel(r.notion_properties)));
         setClientOptions(filtered);
       })
+    )
       .finally(() => {
         if (!cancelled) setClientsLoading(false);
       });

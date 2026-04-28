@@ -8,12 +8,13 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { useEffect, useState } from 'react';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Archive } from 'lucide-react';
+import { Archive, Plus, X } from 'lucide-react';
 import { QUICK_TODAY_PRESETS } from '../constants/quickTodayPresets';
 import type { Priority, Project, Task, TaskColor } from '../types';
 import { cn } from '../utils';
@@ -34,6 +35,7 @@ export interface TasksWorkspaceProps {
   todayTasks: Task[];
   queueTasks: Task[];
   projects: Project[];
+  getGoalTitleForTask: (task: Task) => string | null;
   collapseAllTasksSignal: number;
   onCollapseAllTasks: () => void;
   onMoveToQueue: () => void;
@@ -84,9 +86,22 @@ export function TasksWorkspace({
   onFocusTask,
   onOpenProjectFromTask,
   getProjectForTask,
+  getGoalTitleForTask,
   onDragOver,
   onDragEnd,
 }: TasksWorkspaceProps) {
+  const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
+  const [taskFormDialogKey, setTaskFormDialogKey] = useState(0);
+
+  useEffect(() => {
+    if (!addTaskDialogOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAddTaskDialogOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [addTaskDialogOpen]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -133,6 +148,22 @@ export function TasksWorkspace({
                       </button>
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    title="Dodaj zadanie"
+                    aria-label="Dodaj zadanie"
+                    onClick={() => {
+                      setTaskFormDialogKey(k => k + 1);
+                      setAddTaskDialogOpen(true);
+                    }}
+                    className={cn(
+                      'p-2 rounded-lg text-slate-500 dark:text-slate-400 shrink-0',
+                      'hover:text-tp-accent hover:bg-white dark:hover:bg-tp-raised border border-transparent',
+                      'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-tp-accent/50'
+                    )}
+                  >
+                    <Plus className="w-4 h-4" aria-hidden />
+                  </button>
                 </div>
                 <button
                   onClick={onMoveToQueue}
@@ -152,6 +183,7 @@ export function TasksWorkspace({
                           key={task.id}
                           task={task}
                           projects={projects}
+                          goalTitle={getGoalTitleForTask(task)}
                           onToggleComplete={onToggleComplete}
                           onUpdateTask={onUpdateTask}
                           onAddSubtask={onAddSubtask}
@@ -177,6 +209,7 @@ export function TasksWorkspace({
                           projectColor={getProjectForTask(task)?.color || null}
                           projectEmoji={getProjectForTask(task)?.emoji || null}
                           linkedProjectId={getProjectForTask(task)?.id ?? null}
+                          goalTitle={getGoalTitleForTask(task)}
                           onOpenProject={onOpenProjectFromTask}
                           onToggleComplete={onToggleComplete}
                           onDelete={onDelete}
@@ -259,6 +292,7 @@ export function TasksWorkspace({
                           key={task.id}
                           task={task}
                           projects={projects}
+                          goalTitle={getGoalTitleForTask(task)}
                           onToggleComplete={onToggleComplete}
                           onUpdateTask={onUpdateTask}
                           onAddSubtask={onAddSubtask}
@@ -284,6 +318,7 @@ export function TasksWorkspace({
                           projectColor={getProjectForTask(task)?.color || null}
                           projectEmoji={getProjectForTask(task)?.emoji || null}
                           linkedProjectId={getProjectForTask(task)?.id ?? null}
+                          goalTitle={getGoalTitleForTask(task)}
                           onOpenProject={onOpenProjectFromTask}
                           onToggleComplete={onToggleComplete}
                           onDelete={onDelete}
@@ -310,13 +345,49 @@ export function TasksWorkspace({
             </div>
           </DndContext>
         </div>
-        <div className="mt-6">
-          <TaskForm
-            onAdd={onAddTask}
-            projects={projects}
-            onCreateProject={onCreateProjectFromTaskForm}
+
+      {addTaskDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-task-dialog-title"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/50 cursor-default border-0 p-0"
+            aria-label="Zamknij"
+            onClick={() => setAddTaskDialogOpen(false)}
           />
+          <div className="relative w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 dark:border-white/6 bg-white dark:bg-tp-surface shadow-xl overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/6">
+              <h3 id="add-task-dialog-title" className="text-base font-semibold text-slate-900 dark:text-white">
+                Nowe zadanie
+              </h3>
+              <button
+                type="button"
+                onClick={() => setAddTaskDialogOpen(false)}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-tp-muted transition-colors"
+                title="Zamknij"
+              >
+                <X className="w-5 h-5" aria-hidden />
+              </button>
+            </div>
+            <div className="overflow-y-auto min-h-0 flex-1">
+              <TaskForm
+                key={taskFormDialogKey}
+                className="rounded-none border-0 shadow-none mb-0"
+                onAdd={(title, priority, category, color, isRecurring, dueDate) => {
+                  void onAddTask(title, priority, category, color, isRecurring, dueDate);
+                  setAddTaskDialogOpen(false);
+                }}
+                projects={projects}
+                onCreateProject={onCreateProjectFromTaskForm}
+              />
+            </div>
+          </div>
         </div>
+      )}
     </div>
   );
 }

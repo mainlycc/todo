@@ -11,6 +11,8 @@ interface TaskItemProps {
   projectColor?: string | null;
   /** Emotikon projektu (wyświetlany w tagu projektu). */
   projectEmoji?: string | null;
+  /** Nazwa celu (jeśli zadanie przypięte do celu) */
+  goalTitle?: string | null;
   onToggleComplete: (id: string) => void;
   onDelete: (id: string) => void;
   onDeleteSeries?: (templateId: string) => void;
@@ -38,6 +40,7 @@ export function TaskItem({
   task,
   projectColor,
   projectEmoji,
+  goalTitle,
   onToggleComplete,
   onDelete,
   onDeleteSeries,
@@ -177,6 +180,108 @@ export function TaskItem({
   const projectTagColor = projectColor || undefined;
   const metricCount = task.metric_kind ? (task.metric_count ?? 0) : null;
 
+  const projectBadge = task.project_title ? (
+    linkedProjectId && onOpenProject && !task.completed ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenProject(linkedProjectId);
+        }}
+        title={`Otwórz projekt: ${task.project_title}`}
+        className={cn(
+          "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1 w-fit",
+          "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15",
+          "cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-[filter,box-shadow] hover:ring-2 hover:ring-indigo-400/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        )}
+        style={
+          projectTagColor
+            ? {
+                borderColor: `${projectTagColor}80`,
+                backgroundColor: `${projectTagColor}24`,
+                color: projectTagColor,
+                boxShadow: `0 0 0 1px ${projectTagColor}1f`,
+              }
+            : undefined
+        }
+      >
+        {projectEmoji ? <span className="mr-0.5">{projectEmoji}</span> : null}
+        {task.project_title}
+      </button>
+    ) : (
+      <span
+        className={cn(
+          "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1 w-fit",
+          task.completed
+            ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+            : "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
+        )}
+        style={
+          !task.completed && projectTagColor
+            ? {
+                borderColor: `${projectTagColor}80`,
+                backgroundColor: `${projectTagColor}24`,
+                color: projectTagColor,
+                boxShadow: `0 0 0 1px ${projectTagColor}1f`,
+              }
+            : undefined
+        }
+      >
+        {projectEmoji ? <span className="mr-0.5">{projectEmoji}</span> : null}
+        {task.project_title}
+      </span>
+    )
+  ) : !task.project_title && task.category ? (
+    linkedProjectId && onOpenProject && !task.completed ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenProject(linkedProjectId);
+        }}
+        title={`Otwórz projekt: ${task.category}`}
+        className={cn(
+          "text-xs px-2 py-0.5 rounded-full border font-medium w-fit",
+          "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10",
+          "cursor-pointer hover:bg-white/80 dark:hover:bg-black/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        )}
+      >
+        {task.category}
+      </button>
+    ) : (
+      <span
+        className={cn(
+          "text-xs px-2 py-0.5 rounded-full border font-medium w-fit",
+          task.completed
+            ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+            : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"
+        )}
+      >
+        {task.category}
+      </span>
+    )
+  ) : null;
+
+  const goalBadge =
+    goalTitle && !task.completed ? (
+      <span
+        className={cn(
+          "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1 w-fit",
+          "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
+        )}
+        title={`Cel: ${goalTitle}`}
+      >
+        Cel: {goalTitle}
+      </span>
+    ) : goalTitle && task.completed ? (
+      <span
+        className="text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1 w-fit bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
+        title={`Cel: ${goalTitle}`}
+      >
+        Cel: {goalTitle}
+      </span>
+    ) : null;
+
   return (
     <div 
       className={cn(
@@ -256,6 +361,13 @@ export function TaskItem({
               </span>
             )}
           </h3>
+
+          {(projectBadge || goalBadge) && (
+            <div className="mt-1 flex flex-wrap gap-2 items-center">
+              {projectBadge}
+              {goalBadge}
+            </div>
+          )}
           
           <div className="flex flex-wrap items-center gap-2 mt-2">
             {task.due_date && (
@@ -275,84 +387,6 @@ export function TaskItem({
             style={!task.completed && !isPredefinedColor(task.color || 'slate') ? { borderColor: task.color, backgroundColor: `${task.color}20`, color: task.color } : {}}>
               {priorityLabels[task.priority]}
             </span>
-            {task.project_title && (
-              linkedProjectId && onOpenProject && !task.completed ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenProject(linkedProjectId);
-                  }}
-                  title={`Otwórz projekt: ${task.project_title}`}
-                  className={cn(
-                    "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1",
-                    "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15",
-                    "cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-[filter,box-shadow] hover:ring-2 hover:ring-indigo-400/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                  )}
-                  style={
-                    projectTagColor
-                      ? {
-                          borderColor: `${projectTagColor}80`,
-                          backgroundColor: `${projectTagColor}24`,
-                          color: projectTagColor,
-                          boxShadow: `0 0 0 1px ${projectTagColor}1f`,
-                        }
-                      : undefined
-                  }
-                >
-                  {projectEmoji ? <span className="mr-0.5">{projectEmoji}</span> : null}
-                  {task.project_title}
-                </button>
-              ) : (
-                <span
-                  className={cn(
-                    "text-[11px] px-2.5 py-1 rounded-full border font-extrabold uppercase tracking-wider shadow-sm whitespace-nowrap inline-flex items-center gap-1",
-                    task.completed
-                      ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10"
-                      : "bg-white/70 dark:bg-black/25 text-slate-800 dark:text-slate-100 border-black/15 dark:border-white/15"
-                  )}
-                  style={
-                    !task.completed && projectTagColor
-                      ? {
-                          borderColor: `${projectTagColor}80`,
-                          backgroundColor: `${projectTagColor}24`,
-                          color: projectTagColor,
-                          boxShadow: `0 0 0 1px ${projectTagColor}1f`,
-                        }
-                      : undefined
-                  }
-                >
-                  {projectEmoji ? <span className="mr-0.5">{projectEmoji}</span> : null}
-                  {task.project_title}
-                </span>
-              )
-            )}
-            {!task.project_title && task.category && (
-              linkedProjectId && onOpenProject && !task.completed ? (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenProject(linkedProjectId);
-                  }}
-                  title={`Otwórz projekt: ${task.category}`}
-                  className={cn(
-                    "text-xs px-2 py-0.5 rounded-full border font-medium",
-                    "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10",
-                    "cursor-pointer hover:bg-white/80 dark:hover:bg-black/35 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-                  )}
-                >
-                  {task.category}
-                </button>
-              ) : (
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full border font-medium",
-                  task.completed ? "bg-slate-100 dark:bg-tp-muted text-slate-500 dark:text-slate-500 border-slate-200 dark:border-white/10" : "bg-white/60 dark:bg-black/20 text-slate-700 dark:text-slate-300 border-black/10 dark:border-white/10"
-                )}>
-                  {task.category}
-                </span>
-              )
-            )}
             {task.subtasks.length > 0 && (
               <span className="text-xs text-slate-600 dark:text-slate-400 font-medium ml-1">
                 {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} podzadań
